@@ -24,6 +24,7 @@ The method couples a **Contrastive Auto‑Encoder (CAE)** for representation lea
 ├── cae_autoencoder_dual_loss.h5           # Contrastive Auto-Encoder (full)
 ├── cae_encoder.h5                         # Encoder only (inference-time)
 ├── cae_decoder.h5                         # Decoder only
+├── feature_sets.pkl                       # Gene set selected with Lasso
 ├── trained_base_classifiers.pkl           # Five base classifiers (RF, XGB …)
 ├── monte_carlo_gene_importance_averaged.csv  # Gene-ablation scores (10 × MC)
 ├── test_split_metrics.csv                 # Per-class test metrics
