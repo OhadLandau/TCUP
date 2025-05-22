@@ -12,27 +12,31 @@ The method couples a **Contrastive Auto‑Encoder (CAE)** for representation lea
 ---
 
 ## 🌳 Repository layout
-├── DashAppTCUP.py # Dash front-end (entry-point)
-├── ExampleTranscriptomics.csv # Toy input file
-├── Median_Gene_Values_Cancer.pkl # Gene-wise medians – cancer
-├── Median_Gene_Values_Healthy.pkl # Gene-wise medians – healthy
-├── best_meta_learner_8.h5 # Final MLP meta-learner
-├── snn_model.h5 # Siamese Neural Network backbone
-├── cae_autoencoder_dual_loss.h5 # Contrastive Auto-Encoder (full)
-├── cae_encoder.h5 # Encoder only (inference-time)
-├── cae_decoder.h5 # Decoder only
-├── trained_base_classifiers.pkl # Five base classifiers (RF, XGB …)
-├── monte_carlo_gene_importance_averaged.csv # Gene-ablation scores (10× MC)
-├── test_split_metrics.csv # Per-class test metrics (conf. matrix)
+
+```text
+.
+├── DashAppTCUP.py                         # Dash front-end (entry-point)
+├── ExampleTranscriptomics.csv             # Toy input file
+├── Median_Gene_Values_Cancer.pkl          # Gene-wise medians – cancer
+├── Median_Gene_Values_Healthy.pkl         # Gene-wise medians – healthy
+├── best_meta_learner_8.h5                 # Final MLP meta-learner
+├── snn_model.h5                           # Siamese Neural Network backbone
+├── cae_autoencoder_dual_loss.h5           # Contrastive Auto-Encoder (full)
+├── cae_encoder.h5                         # Encoder only (inference-time)
+├── cae_decoder.h5                         # Decoder only
+├── trained_base_classifiers.pkl           # Five base classifiers (RF, XGB …)
+├── monte_carlo_gene_importance_averaged.csv  # Gene-ablation scores (10 × MC)
+├── test_split_metrics.csv                 # Per-class test metrics
 │
-├── assets/ # CSS, logo, favicon
-│ └── …
-├── images/ # Screenshots for the README
-│ ├── LandingPage.png
-│ └── ResultsPage.png
-├── Raw Script/ # End-to-end training pipeline
-│ └── TCUP_raw_training_script.py
-└── README.md # <–– you are here
+├── assets/                                # CSS, logo, favicon
+│   └── …
+├── images/                                # Screenshots for the README
+│   ├── LandingPage.png
+│   └── ResultsPage.png
+├── Raw Script/                            # End-to-end training pipeline
+│   └── TCUP_raw_training_script.py
+└── README.md                              # <–– you are here
+
 ### Key artefacts
 
 | Path | Purpose |
