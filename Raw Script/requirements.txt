@@ -1,0 +1,18 @@
+# Core numerics & data frames
+numpy>=1.26.0
+pandas>=2.2.0
+scipy>=1.11.0          # rankdata, ROC / AUC helpers
+
+# Plotting
+matplotlib>=3.8.0      # includes mpl_toolkits.mplot3d
+seaborn>=0.13.0
+
+# Machine-learning stack
+scikit-learn>=1.4.0    # preprocessing, metrics, model-selection
+imbalanced-learn>=0.13.0   # SMOTE
+xgboost==2.0.3         # CPU-only wheel (avoids heavy CUDA deps)
+umap-learn>=0.5.5      # UMAP dimensionality reduction
+tensorflow>=2.15.0     # provides tf.keras
+
+# Utility (pulled in by scikit-learn but listed explicitly)
+joblib>=1.3.2
