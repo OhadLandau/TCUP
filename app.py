@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
 # DashAppTCUP.py  – 24-May-2025 (rev-2, 22-May-2025)
 # ------------------------------------------------------------------
-# • Grammar fix “was”/“were” (prev. rev-1)
-# • Lists names of significant imputed genes
-# • Adds legend for *, **, *** under Top-20 list
-# • Removes all dependence on large pre-processing pickles
-# ------------------------------------------------------------------
 
 import base64, io, math, pickle, warnings
 from pathlib import Path
