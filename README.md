@@ -17,20 +17,30 @@ The method couples a **Contrastive Auto‑Encoder (CAE)** for representation lea
 .
 ├── DashAppTCUP.py                         # Dash front-end (entry-point)
 ├── ExampleTranscriptomics.csv             # Toy input file
+│
 ├── Median_Gene_Values_Cancer.pkl          # Gene-wise medians – cancer
 ├── Median_Gene_Values_Healthy.pkl         # Gene-wise medians – healthy
+├── Std_Gene_Values_Cancer.pkl             # Gene-wise σ – cancer
+├── Std_Gene_Values_Healthy.pkl            # Gene-wise σ – healthy
+│
+├── BalancedMetastaticStandardScaler.pkl   # StandardScaler (log₂ data)
+├── label_encoder.pkl                      # Tissue label encoder
+│
 ├── best_meta_learner_8.h5                 # Final MLP meta-learner
 ├── snn_model.h5                           # Siamese Neural Network backbone
 ├── cae_autoencoder_dual_loss.h5           # Contrastive Auto-Encoder (full)
 ├── cae_encoder.h5                         # Encoder only (inference-time)
 ├── cae_decoder.h5                         # Decoder only
-├── feature_sets.pkl                       # Gene set selected with Lasso
+│
+├── feature_sets.pkl                       # Lasso-selected gene list
 ├── trained_base_classifiers.pkl           # Five base classifiers (RF, XGB …)
-├── monte_carlo_gene_importance_averaged.csv  # Gene-ablation scores (10 × MC)
-├── test_split_metrics.csv                 # Per-class test metrics
+├── monte_carlo_gene_importance_averaged.csv  # 10× MC gene-ablation scores
+├── test_split_metrics.csv                 # Held-out test metrics
+│
+├── requirements.txt                       # Python dependencies
 │
 ├── assets/                                # CSS, logo, favicon
-│   └── background, logo, css and js for dash
+│   └── …  background.png, style.css, etc.
 ├── images/                                # Screenshots for the README
 │   ├── LandingPage.png
 │   └── ResultsPage.png
@@ -38,23 +48,28 @@ The method couples a **Contrastive Auto‑Encoder (CAE)** for representation lea
 │   └── FullTCUP.py
 └── README.md                              # <–– you are here
 
+
 ```
 
 ### Key artefacts
 
-| Path | Purpose |
-|------|---------|
-| **DashAppTCUP.py** | Launches the Dash UI & prediction pipeline |
-| **Median_Gene_Values_Cancer.pkl** / **…_Healthy.pkl** | Per-gene medians used to impute missing genes and calculate over/under-expression |
-| **snn_model.h5** | Siamese Neural Network generating sample embeddings |
-| **cae_autoencoder_dual_loss.h5** | Contrastive Auto-Encoder (joint loss) – produces latent representation fed to base classifiers |
-| **trained_base_classifiers.pkl** | Five fine-tuned base models (RF, XGB, LR, k-NN, SVM) that vote via the meta learner |
-| **best_meta_learner_8.h5** | Multi-layer perceptron combining base classifier logits into final probabilities |
-| **monte_carlo_gene_importance_averaged.csv** | Averaged single-gene ablation impact (10-run Monte-Carlo) – drives the “20 most influential genes” list |
-| **test_split_metrics.csv** | Held-out test-set metrics, used to display *TCUP accuracy* for each tissue |
-| **ExampleTranscriptomics.csv** | Minimal example showing the required file format for uploads |
+| Path                                                      | Purpose                                                                                                 |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **DashAppTCUP.py**                                        | Launches the Dash UI & prediction pipeline                                                              |
+| **Median\_Gene\_Values\_Cancer.pkl** / **…\_Healthy.pkl** | Per-gene medians used to impute missing genes                                                           |
+| **Std\_Gene\_Values\_Cancer.pkl** / **…\_Healthy.pkl**    | Per-gene standard deviations for z-score significance tests                                             |
+| **BalancedMetastaticStandardScaler.pkl**                  | Scaler applied to log₂-transformed expression before inference                                          |
+| **label\_encoder.pkl**                                    | Maps integer IDs ⇄ tissue labels for probability vectors                                                |
+| **snn\_model.h5**                                         | Siamese Neural Network generating sample embeddings                                                     |
+| **cae\_autoencoder\_dual\_loss.h5**                       | Contrastive Auto-Encoder (joint loss) – produces latent representation fed to base classifiers          |
+| **trained\_base\_classifiers.pkl**                        | Five fine-tuned base models (RF, XGB, LR, k-NN, SVM) that vote via the meta learner                     |
+| **best\_meta\_learner\_8.h5**                             | Multi-layer perceptron combining base classifier logits into final probabilities                        |
+| **monte\_carlo\_gene\_importance\_averaged.csv**          | Averaged single-gene ablation impact (10-run Monte-Carlo) – drives the “20 most influential genes” list |
+| **test\_split\_metrics.csv**                              | Held-out test-set metrics, used to display *TCUP accuracy* for each tissue                              |
+| **ExampleTranscriptomics.csv**                            | Minimal example showing the required file format for uploads                                            |
 
-> **Note** – raw expression matrices (TCGA, GTEx and metastatic cohorts) are **not included** due to size constraints. Contact *olandau4@gmail.com* to arrange data transfer if you plan to retrain TCUP.
+
+Note – raw expression matrices (TCGA, GTEx and metastatic cohorts) are not included due to size constraints. Contact olandau4@gmail.com to arrange data transfer if you plan to retrain TCUP.
 
 ---
 
