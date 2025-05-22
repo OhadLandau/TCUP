@@ -13,34 +13,45 @@ The method couples a **Contrastive Auto‑Encoder (CAE)** for representation lea
 
 ## 🌳 Repository layout
 
-```
-.
-├─ app/                     # Dash front‑end
-│   ├─ app.py
-│   └─ assets/              # CSS, logo, favicon
-├─ models/                  # Pre‑trained weights & helpers
-│   ├─ tcup_cancer.pkl
-│   ├─ tcup_healthy.pkl
-│   ├─ medians_cancer.csv
-│   ├─ medians_healthy.csv
-│   └─ label_encoder.pkl
-├─ Raw Model Script/        # Original end‑to‑end training pipeline
-│   └─ TCUP_raw_training_script.py
-├─ images/                  # Screenshots for this README
-│   ├─ LandingPage.png
-│   └─ ResultsPage.png
-├─ requirements.txt
-└─ README.md                # <–– you are here
-```
+├─ DashAppTCUP.py # Dash front-end (entry-point)
+├─ ExampleTranscriptomics.csv # Toy input file
+├─ Median_Gene_Values_Cancer.pkl # Gene-wise medians – cancer
+├─ Median_Gene_Values_Healthy.pkl # Gene-wise medians – healthy
+├─ best_meta_learner_8.h5 # Final MLP meta-learner
+├─ snn_model.h5 # Siamese Neural Network backbone
+├─ cae_autoencoder_dual_loss.h5 # Contrastive Auto-Encoder (full)
+├─ cae_encoder.h5 # Encoder only (inference-time)
+├─ cae_decoder.h5 # Decoder only
+├─ trained_base_classifiers.pkl # 5 base classifiers (RF, XGB …)
+├─ monte_carlo_gene_importance_averaged.csv # Gene-ablation scores (10× MC)
+├─ test_split_metrics.csv # Per-class test metrics (conf. matrix)
+├─ assets/ # CSS, logo, favicon
+│ └─ …
+├─ images/ # Screenshots for the README
+│ ├─ LandingPage.png
+│ └─ ResultsPage.png
+├─ Raw Script/ # End-to-end training pipeline
+│ └─ TCUP_raw_training_script.py
+└─ README.md # <–– you are here
+
+### Key artefacts
+
 
 ### Key artefacts
 
 | Path | Purpose |
 |------|---------|
-| **models/tcup_cancer.pkl** | CAE + SNN stack trained on *cancer* samples |
-| **models/tcup_healthy.pkl** | Equivalent model trained on *healthy* tissues |
-| **medians_cancer.csv** / **medians_healthy.csv** | Per‑gene median expression used for graceful imputation when a gene is missing from the user upload |
-| **Raw Model Script/** | Reproducible pipeline to retrain TCUP from scratch (data download ➜ preprocessing ➜ training ➜ evaluation) |
+| **DashAppTCUP.py** | Launches the Dash UI & prediction pipeline |
+| **Median_Gene_Values_Cancer.pkl** / **…_Healthy.pkl** | Per-gene medians used to impute missing genes and calculate over/under-expression |
+| **snn_model.h5** | Siamese Neural Network generating sample embeddings |
+| **cae_autoencoder_dual_loss.h5** | Contrastive Auto-Encoder (joint loss) – produces latent representation fed to base classifiers |
+| **trained_base_classifiers.pkl** | Five fine-tuned base models (RF, XGB, LR, k-NN, SVM) that vote via the meta learner |
+| **best_meta_learner_8.h5** | Multi-layer perceptron combining base classifier logits into final probabilities |
+| **monte_carlo_gene_importance_averaged.csv** | Averaged single-gene ablation impact (10-run Monte-Carlo) – drives the “20 most influential genes” list |
+| **test_split_metrics.csv** | Held-out test-set metrics, used to display *TCUP accuracy* for each tissue |
+| **ExampleTranscriptomics.csv** | Minimal example showing the required file format for uploads |
+
+> **Note** – raw expression matrices (TCGA, GTEx and metastatic cohorts) are **not included** due to size constraints. Contact *olandau4@gmail.com* to arrange data transfer if you plan to retrain TCUP.
 
 ---
 
@@ -93,7 +104,7 @@ If your sample’s probability is low (<0.4) or multiple tissues cluster tightly
 
 1. Taw expression matrices (TCGA, GTEx, metastatic) were not uploaded due to the significant size of the files, to use the data for potential retraining contact us - olandau4@gmail.com - and we will find a solution to transfer the data. 
 2. Once data obtained, paths for the read_csv functions should be changed and matched to your enviorment.
-3. install all depdencies (see all libraries on import, this is not a rebuild repo hence no requirements.txt file)
+3. install all depdencies (requirements.txt)
 4. Run `python FullTCUP.py`.  
 
 
