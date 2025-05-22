@@ -37,6 +37,8 @@ The method couples a **Contrastive Auto‑Encoder (CAE)** for representation lea
 │   └── TCUP_raw_training_script.py
 └── README.md                              # <–– you are here
 
+```
+
 ### Key artefacts
 
 | Path | Purpose |
