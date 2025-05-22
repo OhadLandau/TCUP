@@ -29,12 +29,12 @@ The method couples a **Contrastive Auto‑Encoder (CAE)** for representation lea
 ├── test_split_metrics.csv                 # Per-class test metrics
 │
 ├── assets/                                # CSS, logo, favicon
-│   └── …
+│   └── background, logo, css and js for dash
 ├── images/                                # Screenshots for the README
 │   ├── LandingPage.png
 │   └── ResultsPage.png
 ├── Raw Script/                            # End-to-end training pipeline
-│   └── TCUP_raw_training_script.py
+│   └── FullTCUP.py
 └── README.md                              # <–– you are here
 
 ```
