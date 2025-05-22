@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-# DashAppTCUP.py  – 24 May 2025  (rev-3, 22 May 2025)
+# DashAppTCUP.py  – 24 May 2025  (rev-4, 22 May 2025)
 # ------------------------------------------------------------------
 # • Adds custom_objects dict to *all* model-loads that contain Lambda
 #   layers so Keras can resolve backend-symbol “K”.
 # • Removes redundant second load of snn_model.h5
+# • Exposes `server` for Gunicorn (rev-4)  ← NEW
 # ------------------------------------------------------------------
 
 import base64, io, math, pickle, warnings
@@ -20,13 +21,13 @@ warnings.filterwarnings("ignore")
 ROOT = Path(__file__).resolve().parent
 
 # ─────────────────── pre-computed artefacts ──────────────────────
-with open(ROOT / "Median_Gene_Values_Cancer.pkl", "rb")  as fh:
+with open(ROOT / "Median_Gene_Values_Cancer.pkl",  "rb") as fh:
     MED_CANCER = pickle.load(fh)
-with open(ROOT / "Std_Gene_Values_Cancer.pkl", "rb")    as fh:
+with open(ROOT / "Std_Gene_Values_Cancer.pkl",     "rb") as fh:
     STD_CANCER = pickle.load(fh)
 with open(ROOT / "Median_Gene_Values_Healthy.pkl", "rb") as fh:
     MED_HEALTH = pickle.load(fh)
-with open(ROOT / "Std_Gene_Values_Healthy.pkl", "rb")   as fh:
+with open(ROOT / "Std_Gene_Values_Healthy.pkl",    "rb") as fh:
     STD_HEALTH = pickle.load(fh)
 
 IMP_DF = (
@@ -53,7 +54,7 @@ import tensorflow as tf
 from tensorflow.keras import backend as K
 
 tf.get_logger().setLevel("ERROR")          # silence TF info logs
-custom = {"K": K}                          # will resolve Lambda(K.*)
+custom = {"K": K}                          # resolve Lambda(K.*)
 
 SNN_FULL = tf.keras.models.load_model(
     ROOT / "snn_model.h5",
@@ -180,10 +181,8 @@ def build_summary(
 ) -> html.Div:
     acc_str = acc_for_label(label)
 
-    miss_num = html.Span(
-        str(len(missing)),
-        className="redNum" if missing else ""
-    )
+    miss_num = html.Span(str(len(missing)),
+                         className="redNum" if missing else "")
 
     base_small = html.Small(
         ["Used median values for ", miss_num, " missing gene(s)."]
@@ -200,14 +199,13 @@ def build_summary(
                 html.Small(
                     ["⚠️ **", str(ncrit), f"** gene(s) {verb} imputed from the "
                      "most significant accuracy-affecting gene set for this "
-                     "class (top 128; p-value < 0.05)."],
+                     "class (top 128; p < 0.05)."],
                     className="warn"
                 )
             )
             extra_lines.append(
                 html.Small(
-                    [str(ncrit), " significant accuracy-affecting gene(s) "
-                     "imputed: ",
+                    [str(ncrit), " significant gene(s) imputed: ",
                      ", ".join(sorted(critical))],
                     className="warn"
                 )
@@ -222,16 +220,13 @@ def build_summary(
             )
     else:
         extra_lines.append(
-            html.Small(
-                ["No genes required median imputation."],
-                className="ok"
-            )
+            html.Small("No genes required median imputation.", className="ok")
         )
 
     return html.Div([
         html.P([
             "Predicted tissue – ", html.Strong(label),
-            ", Probability – ", html.Strong(f"{prob:.2f}"),
+            ", Probability – ",   html.Strong(f"{prob:.2f}"),
             ", TCUP accuracy ≈ ", html.Strong(acc_str)
         ]),
         base_small,
@@ -353,6 +348,7 @@ app = dash.Dash(
     external_stylesheets=[dbc.themes.BOOTSTRAP],
     suppress_callback_exceptions=True,
 )
+server = app.server          # ← THIS LINE IS NEW  (needed by Gunicorn)
 app.layout = html.Div([layout_landing, layout_results])
 app.server.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
 
@@ -389,10 +385,7 @@ def handle_upload(contents, fname):
         return (
             no_update,
             dbc.Alert("❌ Could not read file.", color="danger"),
-            [],
-            None,
-            {"display": "none"},
-            True,
+            [], None, {"display": "none"}, True,
         )
 
     n = len(df)
@@ -405,22 +398,14 @@ def handle_upload(contents, fname):
     if n == 1:
         return (
             df.to_json(date_format="iso", orient="split"),
-            alert,
-            [],
-            None,
-            {"display": "none"},
-            False,
+            alert, [], None, {"display": "none"}, False,
         )
 
     opts = [{"label": str(idx), "value": int(i)}
             for i, idx in enumerate(df.index)]
     return (
         df.to_json(date_format="iso", orient="split"),
-        alert,
-        opts,
-        None,
-        {"display": "block"},
-        True,
+        alert, opts, None, {"display": "block"}, True,
     )
 
 
@@ -481,12 +466,8 @@ def run_prediction(_, json_df, sample_idx, sample_type):
     fig = make_bar(probs)
 
     return (
-        fig,
-        summary,
-        spans,
-        legend,
-        {"display": "none"},
-        {"display": "block"},
+        fig, summary, spans, legend,
+        {"display": "none"}, {"display": "block"},
     )
 
 
