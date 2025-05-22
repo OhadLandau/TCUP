@@ -2,8 +2,6 @@ services:
   - type: web
     name: tcup-dash
     runtime: python
+    pythonVersion: 3.10.14         # ← this is the crucial line
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:server --timeout 120
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.10.14
