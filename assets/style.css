@@ -1,0 +1,184 @@
+/* ---------- global background ---------- */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+body {
+  background: url("background.png") no-repeat center top fixed;
+  background-size: contain;
+  background-color: #faf7e3;
+}
+
+/* ---------- intro panel ---------- */
+#intro-panel {
+  margin-top: 6vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#intro-logo {
+  width: 220px;
+  height: 220px;
+  transition: transform 0.6s ease;
+}
+.move-up {
+  transform: translateY(0);
+}
+
+/* pulsing “Analyze” on intro */
+@keyframes pulse {
+  0%   { transform: scale(1);   }
+  50%  { transform: scale(1.08);}
+  100% { transform: scale(1);   }
+}
+#begin-btn {
+  margin-top: 26px;
+  width: 160px;
+  height: 50px;
+  border: 0;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 18px;
+  background: #ffd400;
+  color: #000;
+  cursor: pointer;
+  animation: pulse 1.6s ease-in-out infinite;
+  box-shadow: 0 0 14px rgba(0, 0, 0, 0.25);
+}
+
+/* ---------- upload / landing ---------- */
+#upload-card {
+  width: 660px;
+  max-width: 95vw;
+  background: rgba(0, 0, 0, 0.78);
+  border-radius: 18px;
+  padding: 90px 50px 70px;
+  margin: 9vh auto;
+  box-shadow: 0 10px 32px rgba(0,0,0,.55);
+  text-align: center;
+  color: #eee;
+  position: relative;
+}
+#logo-top {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 90px;
+  width: 90px;
+}
+
+.dash-upload-area {
+  width: 100%;
+  height: 170px;
+  border: 2px dashed #b6b6b6;
+  border-radius: 10px;
+  line-height: 170px;
+  font-size: 19px;
+  color: #d0d0d0;
+  background: rgba(255,255,255,.04);
+  margin-bottom: 26px;
+}
+
+/* --- Cancer / Healthy selector --- */
+#sample-type {
+  margin: 14px auto 40px;
+  display: flex;
+  justify-content: center;
+}
+#sample-type .dash-radio-items {
+  display: flex;
+  align-items: center;
+  gap: 140px;        /* ⬅️  explicit 140-px gap between options */
+}
+#sample-type .dash-radio-items label {
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  font-size: 20px;
+  color: #fff;
+}
+#sample-type input[type="radio"] {
+  margin-right: 8px;
+}
+
+#sample-select {
+  width: 260px;
+  margin: 0 auto 24px;
+  font-weight: 700;
+  color: #000;
+}
+
+#analyze-btn,
+button {
+  width: 170px;
+  height: 44px;
+  border: 0;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+#analyze-btn.disabled {
+  background: #888;
+  color: #222;
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+#analyze-btn.enabled {
+  background: #fff;
+  color: #000;
+  cursor: pointer;
+  opacity: 1;
+}
+
+/* ---------- results ---------- */
+#results-panel {
+  max-width: 1150px;
+  background: rgba(255,255,255,.96);
+  border-radius: 12px;
+  padding: 40px 50px 40px;
+  margin: 80px auto 90px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.3);
+}
+#prob-graph { margin-bottom: 100px; }
+#prob-graph .main-svg { height: 520px !important; }
+
+/* ---------- summary ---------- */
+#summary-box {
+  background: rgba(255,255,255,.98);
+  border-radius: 12px;
+  padding: 32px 40px 38px;
+  margin: 30px auto 40px;
+  max-width: 1150px;
+  text-align: center;
+  box-shadow: 0 4px 18px rgba(0,0,0,.14);
+}
+#summary-box p    { margin: 0;  font-size: 18px; }
+#summary-box small{ display: block; margin-top: 6px; font-style: italic; }
+
+/* ---------- top-20 gene list ---------- */
+#gene-list {
+  max-width: 900px;
+  margin: 10px auto 50px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.up   { color: #2980b9; } /* blue ↑ */
+.down { color: #c0392b; } /* red  ↓ */
+
+/* ---------- back button ---------- */
+#back-btn {
+  margin-top: 5px;
+  border-radius: 6px;
+  background: #fff;
+  color: #000;
+  width: 140px;
+  height: 40px;
+  border: 0;
+}
