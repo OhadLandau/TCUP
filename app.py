@@ -50,15 +50,22 @@ _ACC_MAP = {r["Set"].upper(): float(r["Accuracy"])
             for _, r in _METRIC_CSV.iterrows()}
 
 import tensorflow as tf
-from tensorflow.keras import backend as K      # noqa: F401
+from tensorflow.keras import backend as K
 
-tf.get_logger().setLevel("ERROR")
-SNN_FULL    = tf.keras.models.load_model(ROOT / "snn_model.h5", compile=False)
+tf.get_logger().setLevel("ERROR")          # quiet TF logs
+custom = {"K": K}
+
+SNN_FULL = tf.keras.models.load_model(
+    ROOT / "snn_model.h5",
+    compile=False,
+    custom_objects=custom
+)
 SNN_ENCODER = SNN_FULL.layers[2]
-CAE_ENCODER = tf.keras.models.load_model(ROOT / "cae_encoder.h5", compile=False)
+
+CAE_ENCODER = tf.keras.models.load_model(ROOT / "cae_encoder.h5",
+                                         compile=False)
 META_NET    = tf.keras.models.load_model(ROOT / "best_meta_learner_8.h5",
                                          compile=False)
-
 # ───────────────────────── helpers ───────────────────────────────
 SQRT2 = math.sqrt(2.0)
 
