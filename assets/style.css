@@ -23,15 +23,13 @@ body {
   height: 220px;
   transition: transform 0.6s ease;
 }
-.move-up {
-  transform: translateY(0);
-}
+.move-up { transform: translateY(0); }
 
 /* pulsing “Analyze” on intro */
 @keyframes pulse {
-  0%   { transform: scale(1);   }
-  50%  { transform: scale(1.08);}
-  100% { transform: scale(1);   }
+  0%   { transform: scale(1);    }
+  50%  { transform: scale(1.08); }
+  100% { transform: scale(1);    }
 }
 #begin-btn {
   margin-top: 26px;
@@ -45,14 +43,14 @@ body {
   color: #000;
   cursor: pointer;
   animation: pulse 1.6s ease-in-out infinite;
-  box-shadow: 0 0 14px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 0 14px rgba(0,0,0,.25);
 }
 
 /* ---------- upload / landing ---------- */
 #upload-card {
   width: 660px;
   max-width: 95vw;
-  background: rgba(0, 0, 0, 0.78);
+  background: rgba(0,0,0,.78);
   border-radius: 18px;
   padding: 90px 50px 70px;
   margin: 9vh auto;
@@ -91,7 +89,7 @@ body {
 #sample-type .dash-radio-items {
   display: flex;
   align-items: center;
-  gap: 140px;        /* ⬅️  explicit 140-px gap between options */
+  gap: 140px;
 }
 #sample-type .dash-radio-items label {
   display: flex;
@@ -101,7 +99,7 @@ body {
   color: #fff;
 }
 #sample-type input[type="radio"] {
-  margin-right: 8px;
+  margin-right: 10px;
 }
 
 #sample-select {
@@ -118,13 +116,13 @@ button {
   border: 0;
   border-radius: 6px;
   font-weight: 600;
-  transition: opacity 0.2s;
+  transition: opacity .2s;
 }
 #analyze-btn.disabled {
   background: #888;
   color: #222;
   cursor: not-allowed;
-  opacity: 0.4;
+  opacity: .4;
 }
 #analyze-btn.enabled {
   background: #fff;
@@ -142,8 +140,8 @@ button {
   margin: 80px auto 90px;
   box-shadow: 0 8px 28px rgba(0,0,0,.3);
 }
-#prob-graph { margin-bottom: 100px; }
-#prob-graph .main-svg { height: 520px !important; }
+#prob-graph          { margin-bottom: 100px; }
+#prob-graph .main-svg{ height: 520px !important; }
 
 /* ---------- summary ---------- */
 #summary-box {
@@ -155,13 +153,16 @@ button {
   text-align: center;
   box-shadow: 0 4px 18px rgba(0,0,0,.14);
 }
-#summary-box p    { margin: 0;  font-size: 18px; }
-#summary-box small{ display: block; margin-top: 6px; font-style: italic; }
+#summary-box p       { margin: 0; font-size: 18px; }
+#summary-box small   { display: block; margin-top: 6px; font-style: italic; }
+#summary-box .redNum { color:#e74c3c; font-weight:700; }
+#summary-box .warn   { color:#e74c3c; font-weight:700; }
+#summary-box .ok     { color:#27ae60; font-weight:700; }
 
 /* ---------- top-20 gene list ---------- */
-#gene-list {
+#gene-list  {
   max-width: 900px;
-  margin: 10px auto 50px;
+  margin: 10px auto 0;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -169,16 +170,26 @@ button {
   font-size: 17px;
   font-weight: 600;
 }
-.up   { color: #2980b9; } /* blue ↑ */
-.down { color: #c0392b; } /* red  ↓ */
+.up   { color:#2980b9; }
+.down { color:#c0392b; }
+.std  { color:#555;  font-weight:400; margin-left:2px; }
+
+/* ---------- significance note ---------- */
+#gene-note {
+  margin: 6px auto 50px;
+  max-width: 900px;
+  font-size: 15px;
+  text-align: center;
+  font-style: italic;
+}
 
 /* ---------- back button ---------- */
 #back-btn {
   margin-top: 5px;
   border-radius: 6px;
-  background: #fff;
-  color: #000;
-  width: 140px;
-  height: 40px;
-  border: 0;
+  background:#fff;
+  color:#000;
+  width:140px;
+  height:40px;
+  border:0;
 }
