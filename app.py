@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-# DashAppTCUP.py  – 24-May-2025 (rev-2, 22-May-2025)
+# DashAppTCUP.py  – 24 May 2025  (rev-3, 22 May 2025)
+# ------------------------------------------------------------------
+# • Adds custom_objects dict to *all* model-loads that contain Lambda
+#   layers so Keras can resolve backend-symbol “K”.
+# • Removes redundant second load of snn_model.h5
 # ------------------------------------------------------------------
 
 import base64, io, math, pickle, warnings
@@ -36,7 +40,7 @@ with open(ROOT / "BalancedMetastaticStandardScaler.pkl", "rb") as fh:
     SCALER = pickle.load(fh)
 with open(ROOT / "trained_base_classifiers.pkl", "rb") as fh:
     BASE_CLS = pickle.load(fh)
-with open(ROOT / "label_encoder.pkl", "rb") as fh:                # <<< small file
+with open(ROOT / "label_encoder.pkl", "rb") as fh:
     LAB_ENCODER = pickle.load(fh)
 META_CLASSES = LAB_ENCODER.classes_
 
@@ -44,11 +48,12 @@ _METRIC_CSV = pd.read_csv(ROOT / "test_split_metrics.csv")
 _ACC_MAP = {r["Set"].upper(): float(r["Accuracy"])
             for _, r in _METRIC_CSV.iterrows()}
 
+# ─────────────────── TensorFlow / Keras models ───────────────────
 import tensorflow as tf
 from tensorflow.keras import backend as K
 
-tf.get_logger().setLevel("ERROR")          # quiet TF logs
-custom = {"K": K}
+tf.get_logger().setLevel("ERROR")          # silence TF info logs
+custom = {"K": K}                          # will resolve Lambda(K.*)
 
 SNN_FULL = tf.keras.models.load_model(
     ROOT / "snn_model.h5",
@@ -57,10 +62,18 @@ SNN_FULL = tf.keras.models.load_model(
 )
 SNN_ENCODER = SNN_FULL.layers[2]
 
-CAE_ENCODER = tf.keras.models.load_model(ROOT / "cae_encoder.h5",
-                                         compile=False)
-META_NET    = tf.keras.models.load_model(ROOT / "best_meta_learner_8.h5",
-                                         compile=False)
+CAE_ENCODER = tf.keras.models.load_model(
+    ROOT / "cae_encoder.h5",
+    compile=False,
+    custom_objects=custom
+)
+
+META_NET = tf.keras.models.load_model(
+    ROOT / "best_meta_learner_8.h5",
+    compile=False,
+    custom_objects=custom
+)
+
 # ───────────────────────── helpers ───────────────────────────────
 SQRT2 = math.sqrt(2.0)
 
@@ -95,15 +108,16 @@ def parse_upload(contents: str):
     return _robust_read(raw)
 
 def run_pipeline(
-        row: pd.Series,
-        med_dict: dict,
-        std_dict: dict
+    row: pd.Series,
+    med_dict: dict,
+    std_dict: dict
 ) -> Tuple[np.ndarray, List[str], dict]:
     """
-    Returns:
-        probs        : ndarray (n_labels,)
-        missing_genes: list[str]
-        vec_log2     : {gene: value}
+    Returns
+    -------
+    probs : ndarray (n_labels,)
+    missing_genes : list[str]
+    vec_log2 : {gene: value}
     """
     vec_log2 = {}
     for g, v in row.items():
@@ -159,14 +173,13 @@ def acc_for_label(label: str) -> str:
     return "n/a"
 
 def build_summary(
-        label: str,
-        prob: float,
-        missing: List[str],
-        top128: set
+    label: str,
+    prob: float,
+    missing: List[str],
+    top128: set
 ) -> html.Div:
     acc_str = acc_for_label(label)
 
-    # coloured number of missing genes
     miss_num = html.Span(
         str(len(missing)),
         className="redNum" if missing else ""
@@ -176,9 +189,8 @@ def build_summary(
         ["Used median values for ", miss_num, " missing gene(s)."]
     )
 
-    extra_lines = []
+    extra_lines: List[html.Small] = []
 
-    # warning / OK lines
     if missing:
         critical = [g for g in missing if g in top128]
         if critical:
@@ -192,7 +204,6 @@ def build_summary(
                     className="warn"
                 )
             )
-            # list of those genes
             extra_lines.append(
                 html.Small(
                     [str(ncrit), " significant accuracy-affecting gene(s) "
@@ -228,16 +239,11 @@ def build_summary(
     ])
 
 def top_gene_list(
-        pred_label: str,
-        row_log2: dict,
-        med_dict: dict,
-        std_dict: dict
+    pred_label: str,
+    row_log2: dict,
+    med_dict: dict,
+    std_dict: dict
 ) -> Tuple[List[html.Span], html.Small]:
-    """
-    Returns:
-      gene_spans  – list of <span> for top-20 genes
-      legend_line – <small> star-legend line
-    """
     col_name = f"AccuracyDrop_{pred_label}"
     if col_name not in IMP_DF.columns:
         col_name = "AccuracyDrop"
@@ -249,7 +255,7 @@ def top_gene_list(
         .index
     )
 
-    spans = []
+    spans: List[html.Span] = []
     for g in top20:
         expr   = row_log2.get(g, med_dict[g])
         median = med_dict[g]
@@ -459,7 +465,6 @@ def run_prediction(_, json_df, sample_idx, sample_type):
     probs, missing, row_log2 = run_pipeline(row, med_dict, std_dict)
     label   = META_CLASSES[probs.argmax()]
 
-    # --- build top-128 significant set ----------------------------
     col = f"AccuracyDrop_{label}"
     if col not in IMP_DF.columns:
         col = "AccuracyDrop"
@@ -478,8 +483,8 @@ def run_prediction(_, json_df, sample_idx, sample_type):
     return (
         fig,
         summary,
-        spans,          # children for #gene-list
-        legend,         # children for #gene-note
+        spans,
+        legend,
         {"display": "none"},
         {"display": "block"},
     )
@@ -493,7 +498,6 @@ def run_prediction(_, json_df, sample_idx, sample_type):
 )
 def go_back(_):
     return {"display": "block"}, {"display": "none"}
-
 
 # ─────────────────────────── run ─────────────────────────────────
 if __name__ == "__main__":
