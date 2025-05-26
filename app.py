@@ -4,6 +4,7 @@
 # • Exposes `server` for Gunicorn
 # • Lazy-loads TensorFlow models to avoid OOM on Render free tier
 # • All helper functions INCLUDED – nothing is omitted
+# • **Added** two print() calls around long-running steps
 # ------------------------------------------------------------------
 
 import base64, io, math, os, pickle, warnings
@@ -46,9 +47,12 @@ def _load_models():
     tf.get_logger().setLevel("ERROR")
     custom = {"K": K}
 
-    snn_full = tf.keras.models.load_model(ROOT / "snn_model.h5", compile=False, custom_objects=custom)
-    cae_enc  = tf.keras.models.load_model(ROOT / "cae_encoder.h5", compile=False, custom_objects=custom)
-    meta_net = tf.keras.models.load_model(ROOT / "best_meta_learner_8.h5", compile=False, custom_objects=custom)
+    snn_full = tf.keras.models.load_model(
+        ROOT / "snn_model.h5", compile=False, custom_objects=custom)
+    cae_enc  = tf.keras.models.load_model(
+        ROOT / "cae_encoder.h5", compile=False, custom_objects=custom)
+    meta_net = tf.keras.models.load_model(
+        ROOT / "best_meta_learner_8.h5", compile=False, custom_objects=custom)
     return snn_full.layers[2], cae_enc, meta_net
 
 # ───────────────────────── helpers ───────────────────────────────
@@ -77,6 +81,8 @@ def _robust_read(raw: bytes) -> Union[pd.DataFrame, None]:
     return None
 
 def parse_upload(contents: str):
+    # **NEW**: inform user that the upcoming analysis may take time
+    print("The analysis might take a couple of minutes…")
     return _robust_read(base64.b64decode(contents.split(",", 1)[1]))
 
 def run_pipeline(row: pd.Series, med_dict: dict, std_dict: dict
@@ -95,8 +101,7 @@ def run_pipeline(row: pd.Series, med_dict: dict, std_dict: dict
          CAE_ENCODER.predict(X_scaled, verbose=0)], axis=1)
     meta_feats = np.concatenate(
         [clf.predict_proba(emb) for clf in BASE_CLS.values()], axis=1)
-    probs = META_NET.predict(meta_feats, verbose=0)[0]
-    return probs, missing, vec_log2
+    return META_NET.predict(meta_feats, verbose=0)[0], missing, vec_log2
 
 def make_bar(prob):
     import plotly.graph_objects as go
@@ -118,7 +123,6 @@ def acc_for_label(label: str) -> str:
 
 def build_summary(label: str, prob: float,
                   missing: List[str], top128: set) -> html.Div:
-    acc_str = acc_for_label(label)
     miss_num = html.Span(str(len(missing)), className="redNum" if missing else "")
     base_small = html.Small(["Used median values for ", miss_num, " missing gene(s)."])
 
@@ -143,17 +147,15 @@ def build_summary(label: str, prob: float,
                 )
             )
         else:
-            extra_lines.append(
-                html.Small("**None** of the imputed genes belong to the top 128 (p < 0.05).",
-                           className="ok")
-            )
+            extra_lines.append(html.Small("**None** of the imputed genes belong to the top 128 (p < 0.05).",
+                                          className="ok"))
     else:
         extra_lines.append(html.Small("No genes required median imputation.", className="ok"))
 
     return html.Div([
         html.P(["Predicted tissue – ", html.Strong(label),
                 ", Probability – ",   html.Strong(f"{prob:.2f}"),
-                ", TCUP accuracy ≈ ", html.Strong(acc_str)]),
+                ", TCUP accuracy ≈ ", html.Strong(acc_str := acc_for_label(label))]),
         base_small, *extra_lines
     ])
 
@@ -162,7 +164,6 @@ def top_gene_list(pred_label: str, row_log2: dict,
 ) -> Tuple[List[html.Span], html.Small]:
     col_name = f"AccuracyDrop_{pred_label}"
     if col_name not in IMP_DF.columns: col_name = "AccuracyDrop"
-
     top20 = IMP_DF[col_name].sort_values(ascending=False).head(20).index
     spans: List[html.Span] = []
     for g in top20:
@@ -170,12 +171,11 @@ def top_gene_list(pred_label: str, row_log2: dict,
         std = std_dict.get(g, 0) or 1e-9
         diff_sigma = (expr - median) / std
         arrow, cls = ("▲", "up") if diff_sigma > 0 else ("▼", "down")
-        pval, stars = _z_two_tail_p(abs(diff_sigma)), _p_to_stars(_z_two_tail_p(abs(diff_sigma)))
+        stars = _p_to_stars(_z_two_tail_p(abs(diff_sigma)))
         spans.append(html.Span([
             g, html.Span(f" {arrow}", className=cls),
             html.Span(f" ({diff_sigma:+.1f}σ){stars}", className="std")
         ]))
-
     legend = html.Small("* p < 0.05 ** p < 0.01 *** p < 0.001 "
                         "(two-tailed z-test of ±σ across all samples per gene).")
     return spans, legend
@@ -215,7 +215,7 @@ layout_results = html.Div(id="results-panel", style={"display": "none"}, childre
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],
                 suppress_callback_exceptions=True)
-server = app.server                      # Gunicorn entry-point
+server = app.server  # Gunicorn entry-point
 app.layout = html.Div([layout_landing, layout_results])
 app.server.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
 
@@ -224,16 +224,19 @@ app.server.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
           Output("upload-card", "style"),
           Input("begin-btn", "n_clicks"), prevent_initial_call=True)
 def reveal_uploader(n):
-    if n: return {"display": "none"}, {"display": "block"}
+    if n:
+        print("The process is running! Perfect time to grab a cup of tea 😉")
+        return {"display": "none"}, {"display": "block"}
     raise dash.exceptions.PreventUpdate
 
 @callback(Output("store-df", "data"), Output("status-msg", "children"),
           Output("sample-select", "options"), Output("sample-select", "value"),
-          Output("sample-select", "style"),  Output("analyze-btn", "disabled"),
+          Output("sample-select", "style"), Output("analyze-btn", "disabled"),
           Input("upload", "contents"), State("upload", "filename"),
           prevent_initial_call=True)
 def handle_upload(contents, fname):
-    if not contents: raise dash.exceptions.PreventUpdate
+    if not contents:
+        raise dash.exceptions.PreventUpdate
     df = parse_upload(contents)
     if df is None:
         return no_update, dbc.Alert("❌ Could not read file.", color="danger"), \
@@ -251,7 +254,8 @@ def handle_upload(contents, fname):
 @callback(Output("analyze-btn", "disabled", allow_duplicate=True),
           Input("sample-select", "value"), prevent_initial_call=True)
 def enable_analyze(val):
-    if val is None: raise dash.exceptions.PreventUpdate
+    if val is None:
+        raise dash.exceptions.PreventUpdate
     return False
 
 app.clientside_callback(
@@ -265,30 +269,32 @@ app.clientside_callback(
           State("sample-select", "value"), State("sample-type", "value"),
           prevent_initial_call=True)
 def run_prediction(_, json_df, sample_idx, sample_type):
-    df   = pd.read_json(json_df, orient="split")
-    row  = df.iloc[sample_idx or 0]
-    med_dict = MED_CANCER if sample_type == "cancer" else MED_HEALTH
-    std_dict = STD_CANCER if sample_type == "cancer" else STD_HEALTH
+    df  = pd.read_json(json_df, orient="split")
+    row = df.iloc[sample_idx or 0]
+    med = MED_CANCER if sample_type == "cancer" else MED_HEALTH
+    std = STD_CANCER if sample_type == "cancer" else STD_HEALTH
 
-    probs, missing, row_log2 = run_pipeline(row, med_dict, std_dict)
+    probs, missing, row_log2 = run_pipeline(row, med, std)
     label = META_CLASSES[probs.argmax()]
 
     col = f"AccuracyDrop_{label}"
-    if col not in IMP_DF.columns: col = "AccuracyDrop"
-    sig_top128 = (IMP_DF.loc[IMP_DF["p_value"] < 0.05, col]
-                  .sort_values(ascending=False).head(128).index)
+    if col not in IMP_DF.columns:
+        col = "AccuracyDrop"
+    sig128 = IMP_DF.loc[IMP_DF["p_value"] < 0.05, col]\
+                 .sort_values(ascending=False).head(128).index
 
-    summary = build_summary(label, float(probs.max()), missing, set(sig_top128))
-    spans, legend = top_gene_list(label, row_log2, med_dict, std_dict)
+    summary = build_summary(label, float(probs.max()), missing, set(sig128))
+    spans, legend = top_gene_list(label, row_log2, med, std)
     return make_bar(probs), summary, spans, legend, \
            {"display": "none"}, {"display": "block"}
 
 @callback(Output("landing-panel", "style", allow_duplicate=True),
           Output("results-panel", "style", allow_duplicate=True),
           Input("back-btn", "n_clicks"), prevent_initial_call=True)
-def go_back(_): return {"display": "block"}, {"display": "none"}
+def go_back(_):
+    return {"display": "block"}, {"display": "none"}
 
-# ───────────────────────── run local dev ─────────────────────────
+# ─────────────────────────── run local dev ─────────────────────────
 if __name__ == "__main__":
     os.environ.setdefault("WEB_CONCURRENCY", "1")   # single worker
     app.run_server(debug=True)
