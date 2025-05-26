@@ -1,11 +1,4 @@
-#!/usr/bin/env python3
-# DashAppTCUP.py – 24 May 2025  (rev-7 full script)
-# ------------------------------------------------------------------
-# • Exposes `server` for Gunicorn
-# • Lazy-loads TensorFlow models to avoid OOM on Render free tier
-# • All helper functions INCLUDED – nothing is omitted
-# • **Added** two print() calls around long-running steps
-# ------------------------------------------------------------------
+# DashAppTCUP.py – 24 May 2025
 
 import base64, io, math, os, pickle, warnings
 from functools import lru_cache
