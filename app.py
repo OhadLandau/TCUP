@@ -1,9 +1,6 @@
-#!/usr/bin/env python3
-# DashAppTCUP.py – 24 May 2025  (rev-7a: adds 2 user hints)
-# ------------------------------------------------------------------
-# • Exactly the rev-7 script you supplied
-# • PLUS two small UI hints so users know what’s happening
-# ------------------------------------------------------------------
+
+# DashAppTCUP.py – 27 May 2025  (rev-7a: adds 2 user hints)
+
 
 import base64, io, math, os, pickle, warnings
 from functools import lru_cache
