@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-# DashAppTCUP.py – 24 May 2025  (rev-7 → rev-7a with console hints)
+# DashAppTCUP.py – 24 May 2025  (rev-7a: adds 2 user hints)
 # ------------------------------------------------------------------
-# • Exposes `server` for Gunicorn
-# • Lazy-loads TensorFlow models to avoid OOM on Render free tier
-# • Only change: two console print() statements to hint runtime
+# • Exactly the rev-7 script you supplied
+# • PLUS two small UI hints so users know what’s happening
 # ------------------------------------------------------------------
 
 import base64, io, math, os, pickle, warnings
@@ -52,11 +51,9 @@ def _load_models():
 
 # ───────────────────────── helpers ───────────────────────────────
 SQRT2 = math.sqrt(2.0)
-
 def _z_two_tail_p(z: float) -> float:
     cdf = 0.5 * (1.0 + math.erf(z / SQRT2))
     return 2.0 * (1.0 - cdf)
-
 def _p_to_stars(p: float) -> str:
     return "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else ""
 
@@ -65,8 +62,7 @@ def _robust_read(raw: bytes) -> Union[pd.DataFrame, None]:
     for sep in (",", "\t", ";", None):
         try:
             df = pd.read_csv(io.StringIO(txt), sep=sep, engine="python")
-            if df.shape[1] < 3:
-                continue
+            if df.shape[1] < 3: continue
             df = df.set_index(df.columns[0])
             df.index   = df.index.astype(str)
             df.columns = df.columns.str.strip().str.upper()
@@ -81,12 +77,10 @@ def parse_upload(contents: str):
 def run_pipeline(row: pd.Series, med_dict: dict, std_dict: dict
 ) -> Tuple[np.ndarray, List[str], dict]:
     SNN_ENCODER, CAE_ENCODER, META_NET = _load_models()
-
     vec_log2 = {g.upper(): np.log2(float(v) + 1.0)
                 for g, v in row.items() if pd.notna(v)}
     missing = [g for g in FEATURE_COLS if g not in vec_log2]
-    for g in missing:
-        vec_log2[g] = med_dict[g]
+    for g in missing: vec_log2[g] = med_dict[g]
 
     X_scaled = SCALER.transform([[vec_log2[g] for g in FEATURE_COLS]])
     emb = np.concatenate(
@@ -161,7 +155,6 @@ def top_gene_list(pred_label: str, row_log2: dict,
 ) -> Tuple[List[html.Span], html.Small]:
     col_name = f"AccuracyDrop_{pred_label}"
     if col_name not in IMP_DF.columns: col_name = "AccuracyDrop"
-
     top20 = IMP_DF[col_name].sort_values(ascending=False).head(20).index
     spans: List[html.Span] = []
     for g in top20:
@@ -169,12 +162,11 @@ def top_gene_list(pred_label: str, row_log2: dict,
         std = std_dict.get(g, 0) or 1e-9
         diff_sigma = (expr - median) / std
         arrow, cls = ("▲", "up") if diff_sigma > 0 else ("▼", "down")
-        pval, stars = _z_two_tail_p(abs(diff_sigma)), _p_to_stars(_z_two_tail_p(abs(diff_sigma)))
+        stars = _p_to_stars(_z_two_tail_p(abs(diff_sigma)))
         spans.append(html.Span([
             g, html.Span(f" {arrow}", className=cls),
             html.Span(f" ({diff_sigma:+.1f}σ){stars}", className="std")
         ]))
-
     legend = html.Small("* p < 0.05 ** p < 0.01 *** p < 0.001 "
                         "(two-tailed z-test of ±σ across all samples per gene).")
     return spans, legend
@@ -214,7 +206,7 @@ layout_results = html.Div(id="results-panel", style={"display": "none"}, childre
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],
                 suppress_callback_exceptions=True)
-server = app.server                      # Gunicorn entry-point
+server = app.server
 app.layout = html.Div([layout_landing, layout_results])
 app.server.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
 
@@ -235,18 +227,19 @@ def handle_upload(contents, fname):
     if not contents: raise dash.exceptions.PreventUpdate
     df = parse_upload(contents)
     if df is None:
-        return no_update, dbc.Alert("❌ Could not read file.", color="danger"), [], None, {"display":"none"}, True
+        return no_update, dbc.Alert("❌ Could not read file.", color="danger"), \
+               [], None, {"display": "none"}, True
     n = len(df)
     alert = dbc.Alert(f"✅ Loaded **{fname}** – {n} sample(s).",
                       color="success", className="mt-2")
 
-    # ――― PRINT hint right after successful upload ―――
+    # ① hint just after successful upload
     print("The analysis might take a couple of minutes")
 
     if n == 1:
-        return df.to_json(date_format="iso", orient="split"), alert, [], None, {"display":"none"}, False
+        return df.to_json(date_format="iso", orient="split"), alert, [], None, {"display": "none"}, False
     opts = [{"label": str(idx), "value": int(i)} for i, idx in enumerate(df.index)]
-    return df.to_json(date_format="iso", orient="split"), alert, opts, None, {"display":"block"}, True
+    return df.to_json(date_format="iso", orient="split"), alert, opts, None, {"display": "block"}, True
 
 @callback(Output("analyze-btn", "disabled", allow_duplicate=True),
           Input("sample-select", "value"), prevent_initial_call=True)
@@ -265,7 +258,7 @@ app.clientside_callback(
           State("sample-select", "value"), State("sample-type", "value"),
           prevent_initial_call=True)
 def run_prediction(_, json_df, sample_idx, sample_type):
-    # ――― PRINT hint when analysis actually starts ―――
+    # ② hint when heavy analysis kicks off
     print("The process is running! Perfect time to grab a cup of tea 😉")
 
     df   = pd.read_json(json_df, orient="split")
@@ -293,5 +286,5 @@ def go_back(_): return {"display": "block"}, {"display": "none"}
 
 # ───────────────────────── run local dev ─────────────────────────
 if __name__ == "__main__":
-    os.environ.setdefault("WEB_CONCURRENCY", "1")   # single worker
+    os.environ.setdefault("WEB_CONCURRENCY", "1")
     app.run_server(debug=True)
