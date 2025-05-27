@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-# DashAppTCUP.py – 24 May 2025  (rev-8 with on-screen messages)
+# DashAppTCUP.py – 24 May 2025  (rev-9 full script)
 # ------------------------------------------------------------------
-# • All prior rev-7 logic intact
-# • Added info-msg div + callback outputs to display user notices
+# • Exposes `server` for Gunicorn
+# • Lazy-loads TensorFlow models to avoid OOM on Render free tier
+# • All helper functions INCLUDED – nothing is omitted
+# • Displays on-screen notices before and after analysis starts
 # ------------------------------------------------------------------
 
 import base64, io, math, os, pickle, warnings
@@ -53,8 +55,10 @@ SQRT2 = math.sqrt(2.0)
 def _z_two_tail_p(z: float) -> float:
     cdf = 0.5 * (1.0 + math.erf(z / SQRT2))
     return 2.0 * (1.0 - cdf)
+
 def _p_to_stars(p: float) -> str:
     return "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else ""
+
 def _robust_read(raw: bytes) -> Union[pd.DataFrame, None]:
     txt = raw.decode("utf-8", errors="ignore")
     for sep in (",", "\t", ";", None):
@@ -117,23 +121,27 @@ def build_summary(label: str, prob: float,
             ncrit = len(critical); verb = "was" if ncrit == 1 else "were"
             extra_lines.append(html.Small(
                 ["⚠️ **", str(ncrit), f"** gene(s) {verb} imputed from the "
-                 "most significant accuracy-affecting gene set (top 128; p < 0.05)."],
-                className="warn"
+                 "top 128 significant genes (p < 0.05)."], className="warn"
             ))
             extra_lines.append(html.Small(
                 [str(ncrit), " significant gene(s) imputed: ", ", ".join(sorted(critical))],
                 className="warn"
             ))
         else:
-            extra_lines.append(html.Small("**None** of the imputed genes belong to the top 128 (p < 0.05).",
-                                          className="ok"))
+            extra_lines.append(html.Small(
+                "**None** of the imputed genes belong to the top 128 (p < 0.05).",
+                className="ok"
+            ))
     else:
         extra_lines.append(html.Small("No genes required median imputation.", className="ok"))
-    return html.Div([html.P([
-        "Predicted tissue – ", html.Strong(label),
-        ", Probability – ", html.Strong(f"{prob:.2f}"),
-        ", TCUP accuracy ≈ ", html.Strong(acc_str)
-    ]), base_small, *extra_lines])
+    return html.Div([
+        html.P([
+            "Predicted tissue – ", html.Strong(label),
+            ", Probability – ", html.Strong(f"{prob:.2f}"),
+            ", TCUP accuracy ≈ ", html.Strong(acc_str)
+        ]),
+        base_small, *extra_lines
+    ])
 
 def top_gene_list(pred_label: str, row_log2: dict,
                   med_dict: dict, std_dict: dict
@@ -167,29 +175,26 @@ upload_comp = dcc.Upload(
     children=html.Div("Drag & Drop or Browse"), multiple=False
 )
 
-# **Added** info-msg here
-info_msg = html.Div(id="info-msg", style={"textAlign":"center","margin":"10px 0","fontStyle":"italic"})
+# div to show on-screen messages
+info_msg = html.Div(id="info-msg", style={
+    "textAlign": "center", "margin": "10px 0", "fontStyle": "italic"
+})
 
 upload_card = html.Div(
     id="upload-card", style={"display": "none"},
     children=[
         html.Img(src="/assets/logo.png", id="logo-top"),
         upload_comp,
-        dcc.RadioItems(
-            id="sample-type", inline=True, value="cancer",
-            options=[{"label":"Cancer","value":"cancer"},
-                     {"label":"Healthy","value":"healthy"}]
-        ),
+        dcc.RadioItems(id="sample-type", inline=True, value="cancer",
+                       options=[{"label":"Cancer","value":"cancer"},
+                                {"label":"Healthy","value":"healthy"}]),
         dcc.Dropdown(id="sample-select", placeholder="choose sample…",
                      style={"display": "none"}),
-        html.Button("Run Analysis", id="analyze-btn",
-                    className="disabled", disabled=True),
+        html.Button("Run Analysis", id="analyze-btn", className="disabled", disabled=True),
         html.Div(id="status-msg"),
-        info_msg,  # <-- here
-        html.Small(
-            "CSV/TSV – first column = sample ID, the rest = gene symbols.",
-            style={"display": "block", "marginTop":"8px"}
-        ),
+        info_msg,
+        html.Small("CSV/TSV – first column = sample ID, the rest = gene symbols.",
+                   style={"display": "block", "marginTop": "8px"}),
     ],
 )
 
@@ -198,26 +203,25 @@ layout_landing = html.Div(
     children=[intro_panel, upload_card, dcc.Store(id="store-df")]
 )
 layout_results = html.Div(
-    id="results-panel", style={"display":"none"},
+    id="results-panel", style={"display": "none"},
     children=[
         dcc.Graph(id="prob-graph"),
         html.Div(id="summary-box"),
         html.Div(id="gene-list"),
         html.Div(id="gene-note"),
-        info_msg,  # <-- also show message here if desired
+        info_msg,
         html.Button("← Back", id="back-btn"),
     ],
 )
 
-app = dash.Dash(
-    __name__, external_stylesheets=[dbc.themes.BOOTSTRAP],
-    suppress_callback_exceptions=True
-)
-server = app.server
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],
+                suppress_callback_exceptions=True)
+server = app.server  # Gunicorn entry-point
 app.layout = html.Div([layout_landing, layout_results])
 app.server.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
 
 # ───────────────────────── callbacks ─────────────────────────────
+
 @callback(
     Output("intro-panel","style"),
     Output("upload-card","style"),
@@ -227,8 +231,7 @@ app.server.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
 )
 def reveal_uploader(n):
     if n:
-        # show the hint when landing→upload
-        return {"display":"none"},{"display":"block"},{"The analysis might take a couple of minutes…"}
+        return {"display":"none"}, {"display":"block"}, ""
     raise dash.exceptions.PreventUpdate
 
 @callback(
@@ -243,18 +246,20 @@ def reveal_uploader(n):
     State("upload","filename"),
     prevent_initial_call=True
 )
-def handle_upload(contents,fname):
-    if not contents: raise dash.exceptions.PreventUpdate
+def handle_upload(contents, fname):
+    if not contents:
+        raise dash.exceptions.PreventUpdate
     df = parse_upload(contents)
     if df is None:
-        return no_update, dbc.Alert("❌ Could not read file.",color="danger"),[],None,{"display":"none"},True,""
+        return no_update, dbc.Alert("❌ Could not read file.", color="danger"), [], None, {"display":"none"}, True, ""
     n = len(df)
     alert = dbc.Alert(f"✅ Loaded **{fname}** – {n} sample(s).",
-                      color="success",className="mt-2")
-    if n==1:
-        return df.to_json(date_format="iso", orient="split"),alert,[],None,{"display":"none"},False,"The analysis might take a couple of minutes…"
-    opts=[{"label":str(idx),"value":i} for i,idx in enumerate(df.index)]
-    return df.to_json(date_format="iso", orient="split"),alert,opts,None,{"display":"block"},True,"The analysis might take a couple of minutes…"
+                      color="success", className="mt-2")
+    msg = "The analysis might take a couple of minutes…"
+    if n == 1:
+        return df.to_json(date_format="iso", orient="split"), alert, [], None, {"display":"none"}, False, msg
+    opts = [{"label": str(idx), "value": i} for i, idx in enumerate(df.index)]
+    return df.to_json(date_format="iso", orient="split"), alert, opts, None, {"display":"block"}, True, msg
 
 @callback(
     Output("analyze-btn","disabled"),
@@ -262,8 +267,18 @@ def handle_upload(contents,fname):
     prevent_initial_call=True
 )
 def enable_analyze(val):
-    if val is None: raise dash.exceptions.PreventUpdate
+    if val is None:
+        raise dash.exceptions.PreventUpdate
     return False
+
+# new callback to show tea message immediately
+@callback(
+    Output("info-msg","children"),
+    Input("analyze-btn","n_clicks"),
+    prevent_initial_call=True
+)
+def notify_running(n):
+    return "The process is running! Perfect time to grab a cup of tea 😉"
 
 app.clientside_callback(
     "return window.dash_clientside.app.flipAnalyze(disabled);",
@@ -278,6 +293,7 @@ app.clientside_callback(
     Output("gene-note","children"),
     Output("landing-panel","style"),
     Output("results-panel","style"),
+    # keep info-msg here if you want to clear or change after completion, else remove this output
     Output("info-msg","children"),
     Input("analyze-btn","n_clicks"),
     State("store-df","data"),
@@ -285,28 +301,24 @@ app.clientside_callback(
     State("sample-type","value"),
     prevent_initial_call=True
 )
-def run_prediction(_,json_df, sample_idx, sample_type):
-    df   = pd.read_json(json_df,orient="split")
+def run_prediction(_, json_df, sample_idx, sample_type):
+    df   = pd.read_json(json_df, orient="split")
     row  = df.iloc[sample_idx or 0]
     med, std = (MED_CANCER,STD_CANCER) if sample_type=="cancer" else (MED_HEALTH,STD_HEALTH)
 
     probs, missing, row_log2 = run_pipeline(row, med, std)
     label = META_CLASSES[probs.argmax()]
-    col = f"AccuracyDrop_{label}"
-    if col not in IMP_DF.columns: col="AccuracyDrop"
-    sig128 = IMP_DF.loc[IMP_DF["p_value"]<0.05,col].sort_values(ascending=False).head(128).index
+    col   = f"AccuracyDrop_{label}"
+    if col not in IMP_DF.columns:
+        col = "AccuracyDrop"
+    sig128 = (IMP_DF.loc[IMP_DF["p_value"]<0.05, col]
+                 .sort_values(ascending=False).head(128).index)
 
     summary = build_summary(label, float(probs.max()), missing, set(sig128))
     spans, legend = top_gene_list(label, row_log2, med, std)
-    return (
-      make_bar(probs),
-      summary,
-      spans,
-      legend,
-      {"display":"none"},
-      {"display":"block"},
-      "The process is running! Perfect time to grab a cup of tea 😉"
-    )
+
+    # you can clear the info-msg here or leave the tea message
+    return make_bar(probs), summary, spans, legend, {"display":"none"}, {"display":"block"}, ""
 
 @callback(
     Output("landing-panel","style"),
@@ -315,7 +327,7 @@ def run_prediction(_,json_df, sample_idx, sample_type):
     prevent_initial_call=True
 )
 def go_back(_):
-    return {"display":"block"},{"display":"none"}
+    return {"display":"block"}, {"display":"none"}
 
 # ───────────────────────── run local dev ─────────────────────────
 if __name__ == "__main__":
