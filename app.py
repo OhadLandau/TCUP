@@ -1,5 +1,5 @@
 
-# DashAppTCUP.py – 27 May 2025  (rev-7a: adds 2 user hints)
+# DashAppTCUP.py – 27 May 2025 
 
 
 import base64, io, math, os, pickle, warnings
