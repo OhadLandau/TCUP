@@ -109,6 +109,15 @@ body {
   color: #000;
 }
 
+/* ---------- hint message (NEW) ---------- */
+#hint-msg {
+  margin: 6px auto 20px;
+  font-size: 17px;
+  font-style: italic;
+  color: #ffd400;
+}
+
+/* ---------- buttons ---------- */
 #analyze-btn,
 button {
   width: 170px;
