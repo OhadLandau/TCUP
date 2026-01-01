@@ -1,6 +1,6 @@
-# TCUP – Tissue‑of‑Origin Prediction
+# TCUP – Tissue‑of‑Origin Prediction for Cancer of Unknown Primary (CUP)
 
-**TCUP** (Tissue of origin classification for Cancer of Unkown Primary [CUP]) is an open‑access Dash web‑application and model suite that predicts the most likely tissue of origin for:
+**TCUP** is an open‑access Dash web‑application and model suite that predicts the most likely tissue of origin for:
 
 * cancers of unknown primary (CUP)  
 * any transcriptomic sample (e.g. TCGA, GTEx, metastatic, healthy)
