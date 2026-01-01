@@ -1,6 +1,6 @@
 # TCUP – Tissue‑of‑Origin Prediction
 
-**TCUP** (Tissue Classification Using Probabilities) is an open‑access Dash web‑application and model suite that predicts the most likely tissue of origin for:
+**TCUP** (Tissue of origin classification for Cancer of Unkown Primary [CUP]) is an open‑access Dash web‑application and model suite that predicts the most likely tissue of origin for:
 
 * cancers of unknown primary (CUP)  
 * any transcriptomic sample (e.g. TCGA, GTEx, metastatic, healthy)
@@ -88,7 +88,7 @@ pip install -r requirements.txt
 python app/app.py
 ```
 
-The app starts on **http://127.0.0.1:8050** by default.
+The app starts on **http://127.0.0.1:8050** by default when cloned, otherwise the app if deployed on Render with the following URL- https://tcup.onrender.com/
 
 ---
 
@@ -100,7 +100,7 @@ The app starts on **http://127.0.0.1:8050** by default.
 
 * **Landing page** – drag‑and‑drop a CSV/TSV where the **first column is `sample_id`** and the rest are *HGNC gene symbols*. Choose **Cancer** vs **Healthy** to select the assumed tissue type, this will add missing genes and compute the Over/Under expression of most significant genes in predicting the predicted label in your sample (from models intepertation stage - see paper) against the closest assumed reference data.  
 * **Results page** – shows:  
-  1. 49 class probabilities (barplot), top to bottom, left to right.  
+  1. 45 class probabilities (barplot), top to bottom, left to right.  
   2. Predicted tissue + model‑confidence (bold) - Probabilities and Models accuracy for that label on the test set.  
   3. **TCUP accuracy** – historical accuracy for that tissue on an unseen test set (≈ accuracy for the given label).  
   4. The 20 most influential genes in the decision (blue ▲ = over‑expressed; red ▼ = under‑expressed).
@@ -120,7 +120,7 @@ If your sample’s probability is low (<0.4) or multiple tissues cluster tightly
 
 ## 🛠  Retraining
 
-1. Taw expression matrices (TCGA, GTEx, metastatic) were not uploaded due to the significant size of the files, to use the data for potential retraining contact us - olandau4@gmail.com - and we will find a solution to transfer the data. 
+1. Raw expression matrices (TCGA, GTEx, metastatic) were not uploaded due to the significant size of the files, to use the data for potential retraining contact us - olandau4@gmail.com - and we will find a solution to transfer the data. 
 2. Once data obtained, paths for the read_csv functions should be changed and matched to your enviorment.
 3. install all depdencies (requirements.txt)
 4. Run `python FullTCUP.py`.  
