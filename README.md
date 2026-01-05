@@ -11,7 +11,7 @@ The method couples a **Contrastive Auto‑Encoder (CAE)** for representation lea
 
 ---
 
-**TCUP v1.5 update notes**
+# Update-  **TCUP v1.5 update notes**
 
 **Meta-Learning Pipeline Improvements**:
 
