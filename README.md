@@ -11,6 +11,37 @@ The method couples a **Contrastive Auto‑Encoder (CAE)** for representation lea
 
 ---
 
+**TCUP v1.5 update notes**
+
+**Meta-Learning Pipeline Improvements**:
+
+- Implemented nested 64-16-20 split strategy (merged original 60% train + 20% val → 80% development set, then re-split into 64% base-train and 16% meta-validation)
+- Added GridSearchCV hyperparameter tuning for all base classifiers (4 hyperparameters per classifier, 5-fold cross-validation)
+- Implemented cross-validation-based meta-feature generation (5-fold CV on 64% base-train produces out-of-fold predictions)
+- Final meta-learner retrained on 64% base-train (using CV-generated meta-features) with 16% meta-validation monitoring before final test evaluation
+
+**Data Quality & Reproducibility:**
+
+- Added comprehensive duplicate removal (genes and samples) across all datasets before preprocessing
+- Implemented donor-aware splitting for GTEx data to prevent sample leakage from same donors across train/val/test splits
+- Enhanced data integrity unit tests covering SAMPLE_ID leakage, DONOR_ID leakage, duplicate detection, NaN/Inf checks, and label encoder consistency
+- Added deterministic operations with fixed random seed (SEED=42) across all libraries including TensorFlow GPU operations
+- Moved SMOTE application to after feature selection and standardization to prevent synthetic-from-synthetic data generation and ensure SMOTE operates on final feature space
+- Added adaptive k_neighbors for SMOTE based on class sizes to handle small metastatic classes (min 1, max 5 neighbors)
+  
+**Documentation & Transparency:**
+
+- Added detailed logging and checkpointing system for all preprocessing and training stages
+- Generated comprehensive CSV reports tracking label counts, SMOTE operations, and split distributions
+- Improved error handling with informative messages and automatic checkpoint recovery
+
+**Performance:**
+
+- Results: Similar to original with mild improvements in accuracy metrics
+- All improvements validated on held-out 20% test set
+
+Updated raw script can be found in TCUPv1.5 directory, alongside results of the updated models. Updated Ensamble architecture is deployed and running in the open-access tool. 
+
 ## 🌳 Repository layout
 
 ```text
