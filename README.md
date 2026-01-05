@@ -77,6 +77,10 @@ Updated raw script can be found in TCUPv1.5 directory, alongside results of the 
 │   └── ResultsPage.png
 ├── Raw Script/                            # End-to-end training pipeline
 │   └── FullTCUP.py
+├── TCUP v1.5                            # End-to-end updated training pipeline
+│   └── Script + Results of updated model
+├── Data                          # End-to-end training pipeline
+│   └── URL to a Drive link with all the data
 └── README.md                              # <–– you are here
 
 
@@ -100,7 +104,6 @@ Updated raw script can be found in TCUPv1.5 directory, alongside results of the 
 | **ExampleTranscriptomics.csv**                            | Minimal example showing the required file format for uploads                                            |
 
 
-Note – raw expression matrices (TCGA, GTEx and metastatic cohorts) are not included due to size constraints. Contact olandau4@gmail.com to arrange data transfer if you plan to retrain TCUP.
 
 ---
 
