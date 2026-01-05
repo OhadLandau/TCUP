@@ -15,7 +15,7 @@ The method couples a **Contrastive Auto‑Encoder (CAE)** for representation lea
 
 **Meta-Learning Pipeline Improvements**:
 
-- Implemented nested 64-16-20 split strategy (merged original 60% train + 20% val → 80% development set, then re-split into 64% base-train and 16% meta-validation)
+- Implemented nested 64-16-20 split strategy (merged original 60% train + 20% val → 80% development set, then re-split into 80-20 splits for base classifiers(64% base-train and 16% meta-validation).
 - Added GridSearchCV hyperparameter tuning for all base classifiers (4 hyperparameters per classifier, 5-fold cross-validation)
 - Implemented cross-validation-based meta-feature generation (5-fold CV on 64% base-train produces out-of-fold predictions)
 - Final meta-learner retrained on 64% base-train (using CV-generated meta-features) with 16% meta-validation monitoring before final test evaluation
