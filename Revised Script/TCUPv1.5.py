@@ -1812,16 +1812,6 @@ with timer("Full Pipeline Execution"):
         test_data[common_genes] = np.log2(test_data[common_genes] + 1)
         print("Log2 transform complete.")
 
-        # # 11) Standard scaling (optional: do it here or later)
-        # scaler = StandardScaler()
-        # scaler.fit(train_data[common_genes])
-        # train_data[common_genes] = scaler.transform(train_data[common_genes])
-        # val_data[common_genes]   = scaler.transform(val_data[common_genes])
-        # test_data[common_genes]  = scaler.transform(test_data[common_genes])
-
-        # 12) SMOTE REMOVED - Now applied only after scaling (see scaled data section)
-        # This prevents synthetic-from-synthetic data generation and ensures SMOTE
-        # operates on the final feature space after standardization.
         label_counts_after_smote = train_data['LABEL'].value_counts().to_dict()
 
 
@@ -1841,13 +1831,10 @@ with timer("Full Pipeline Execution"):
         train_data['LABEL_NUMERIC'] = label_encoder.transform(train_data['LABEL'])
 
         # 13) Generate "split_label_counts.csv"
-        # with columns: Label,TrainCount,ValCount,TestCount,SMOTE,SMOTE_Generated
         train_counts = train_data['LABEL'].value_counts().to_dict()
         val_counts = val_data['LABEL'].value_counts().to_dict()
         test_counts = test_data['LABEL'].value_counts().to_dict()
 
-        # SMOTE is now applied only after scaling (see scaled data section)
-        # Track which labels will receive SMOTE (metastatic labels with >=5 samples)
         metastatic_labels_for_smote = [
             lbl for lbl in train_data['LABEL'].unique()
             if lbl.endswith('_METASTATIC') and train_counts.get(lbl, 0) >= 5
@@ -1879,9 +1866,7 @@ with timer("Full Pipeline Execution"):
         # Merge final data for reference
         merged_data = pd.concat([train_data, val_data, test_data], ignore_index=True)
 
-        # Finally, save pre_data
-        # Use common_genes_ordered (the sorted, consistent order used throughout)
-        # This ensures all datasets have exactly the same genes in the same order
+    
         with open(merged_data_preprocessed_file, 'wb') as f:
             pickle.dump({
                 'merged_data': merged_data,
@@ -1929,9 +1914,7 @@ if not skip_to_training:
     if 'DONOR_ID' in test_data.columns:
         test_data = test_data.drop(columns=['DONOR_ID'])
 
-    # ============================================================================
-    # Feature selection uses ONLY real training data (no synthetic samples)
-    # ============================================================================
+
     print("Performing feature selection with Lasso (BEFORE scaling and SMOTE)...")
     print("IMPORTANT: LASSO feature selection is performed EXCLUSIVELY on real training data")
     print("          (no SMOTE samples, no test/val data) to prevent data leakage.")
