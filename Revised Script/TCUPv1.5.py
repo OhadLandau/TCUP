@@ -375,13 +375,11 @@ def process_gtex_files_donor_aware(gtex_reads_dir, gtex_processed_file):
         print(f"  Processed {filename}: {len(df_filtered)} samples")
 
     # Concatenate all files along ROWS (axis=0) - each file adds more samples, not more columns
-    # This is correct: we're stacking samples vertically, not adding gene columns horizontally
     gtex_data = pd.concat(data_list, ignore_index=True, axis=0)  # axis=0 explicitly (rows)
 
     print(f"After concatenation: {len(gtex_data)} rows (samples), {len(gtex_data.columns)} columns (genes + metadata)")
 
     # Check and remove duplicate columns (keep first occurrence)
-    # This can happen if the same gene name appears multiple times in the column names
     if gtex_data.columns.duplicated().any():
         print(f"WARNING: GTEx concatenation found {gtex_data.columns.duplicated().sum()} duplicate column names!")
         print("Duplicate columns:", gtex_data.columns[gtex_data.columns.duplicated()].tolist())
@@ -1292,7 +1290,6 @@ with timer("Full Pipeline Execution"):
         initial_rows_tcga = len(patient_data)
         initial_cols_tcga = len(patient_data.columns)
 
-        # Remove duplicate columns (genes) - keep first occurrence
         if patient_data.columns.duplicated().any():
             dup_cols = patient_data.columns[patient_data.columns.duplicated()].tolist()
             print(
@@ -1300,8 +1297,6 @@ with timer("Full Pipeline Execution"):
             patient_data = patient_data.loc[:, ~patient_data.columns.duplicated()]
             print(f"  Removed duplicate columns. Columns: {initial_cols_tcga} -> {len(patient_data.columns)}")
 
-        # Remove duplicate rows (samples) - keep first occurrence
-        # Check duplicates based on all columns (exact match)
         dup_rows_tcga = patient_data.duplicated()
         if dup_rows_tcga.any():
             num_dup = dup_rows_tcga.sum()
@@ -1317,7 +1312,6 @@ with timer("Full Pipeline Execution"):
         initial_rows_gtex = len(gtex_data_full)
         initial_cols_gtex = len(gtex_data_full.columns)
 
-        # Remove duplicate columns (genes) - keep first occurrence
         if gtex_data_full.columns.duplicated().any():
             dup_cols = gtex_data_full.columns[gtex_data_full.columns.duplicated()].tolist()
             print(
@@ -1325,8 +1319,6 @@ with timer("Full Pipeline Execution"):
             gtex_data_full = gtex_data_full.loc[:, ~gtex_data_full.columns.duplicated()]
             print(f"  Removed duplicate columns. Columns: {initial_cols_gtex} -> {len(gtex_data_full.columns)}")
 
-        # Remove duplicate rows (samples) - keep first occurrence
-        # Check duplicates based on all columns (exact match)
         dup_rows_gtex = gtex_data_full.duplicated()
         if dup_rows_gtex.any():
             num_dup = dup_rows_gtex.sum()
@@ -1343,7 +1335,6 @@ with timer("Full Pipeline Execution"):
         initial_rows_met = len(metastatic_data)
         initial_cols_met = len(metastatic_data.columns)
 
-        # Remove duplicate columns (genes) - keep first occurrence
         if metastatic_data.columns.duplicated().any():
             dup_cols = metastatic_data.columns[metastatic_data.columns.duplicated()].tolist()
             print(
@@ -1351,8 +1342,6 @@ with timer("Full Pipeline Execution"):
             metastatic_data = metastatic_data.loc[:, ~metastatic_data.columns.duplicated()]
             print(f"  Removed duplicate columns. Columns: {initial_cols_met} -> {len(metastatic_data.columns)}")
 
-        # Remove duplicate rows (samples) - keep first occurrence
-        # Check duplicates based on all columns (exact match)
         dup_rows_met = metastatic_data.duplicated()
         if dup_rows_met.any():
             num_dup = dup_rows_met.sum()
@@ -1447,7 +1436,6 @@ with timer("Full Pipeline Execution"):
             # Datasets are already filtered to common_genes, so just select gene columns
             patient_expr = patient_data[common_genes]
             patient_expr_imputed = imputer.fit_transform(patient_expr)
-            # Capture the actual column order used by the imputer (from patient_data)
             common_genes_ordered = list(patient_expr.columns)
         patient_expr_imputed = pd.DataFrame(patient_expr_imputed, columns=common_genes_ordered,
                                             index=patient_expr.index)
@@ -1456,7 +1444,6 @@ with timer("Full Pipeline Execution"):
         # -------------------
         # 2) Impute GTEX
         # -------------------
-        # Select columns in the exact same order as patient_data to match the fitted imputer
         gtex_expr = gtex_data_full.loc[:, common_genes_ordered]
         gtex_expr_imputed = imputer.transform(gtex_expr)
         gtex_expr_imputed = pd.DataFrame(gtex_expr_imputed, columns=common_genes_ordered, index=gtex_data_full.index)
@@ -1465,7 +1452,6 @@ with timer("Full Pipeline Execution"):
         # -------------------
         # 3) Impute Metastatic
         # -------------------
-        # Select columns in the exact same order as patient_data to match the fitted imputer
         metastatic_expr = metastatic_data.loc[:, common_genes_ordered]
         metastatic_expr_imputed = imputer.transform(metastatic_expr)
         metastatic_expr_imputed = pd.DataFrame(metastatic_expr_imputed, columns=common_genes_ordered,
@@ -1618,7 +1604,6 @@ with timer("Full Pipeline Execution"):
         # -------------------
         print("\nMerging final splits from GTEx, TCGA, and Metastatic datasets...")
 
-        # Merge first (like original code) - pandas will create NaN for missing SAMPLE_ID columns
         train_data = pd.concat([gtex_train, patient_train, train_meta], ignore_index=True)
         val_data = pd.concat([gtex_val, patient_val, val_meta], ignore_index=True)
         test_data = pd.concat([gtex_test, patient_test, test_samples], ignore_index=True)
@@ -1626,7 +1611,6 @@ with timer("Full Pipeline Execution"):
         print(f"Final merged splits: Train={len(train_data):,}, Val={len(val_data):,}, Test={len(test_data):,}")
 
         # Ensure unique SAMPLE_ID AFTER merging (like original code)
-        # This handles cases where some datasets don't have SAMPLE_ID (creates NaN during concat)
         if 'SAMPLE_ID' not in train_data.columns or train_data['SAMPLE_ID'].isna().any():
             # Create SAMPLE_IDs for all samples, preserving existing ones where they exist
             train_data['SAMPLE_ID'] = [f"TRAIN_{i}" for i in range(len(train_data))]
@@ -1642,13 +1626,10 @@ with timer("Full Pipeline Execution"):
         print("UNIT TEST: Checking for data leakage...")
         print("=" * 80)
 
-        # Get SAMPLE_IDs (should all be valid now after setting them above)
-        # Filter NaN before converting to string to avoid 'nan' string issues
         train_sample_ids = set(train_data['SAMPLE_ID'].dropna().astype(str))
         val_sample_ids = set(val_data['SAMPLE_ID'].dropna().astype(str))
         test_sample_ids = set(test_data['SAMPLE_ID'].dropna().astype(str))
 
-        # Check SAMPLE_ID leakage (only on valid, non-NaN IDs)
         train_val_overlap = train_sample_ids & val_sample_ids
         train_test_overlap = train_sample_ids & test_sample_ids
         val_test_overlap = val_sample_ids & test_sample_ids
@@ -1669,7 +1650,6 @@ with timer("Full Pipeline Execution"):
         print("✓ No SAMPLE_ID leakage detected")
 
         # Check DONOR_ID leakage (for GTEx samples)
-        # Filter out NaN values from DONOR_IDs
         if 'DONOR_ID' in train_data.columns:
             train_donor_ids = set(train_data[train_data['SOURCE'] == 'GTEX']['DONOR_ID'].dropna().astype(str))
         else:
@@ -1706,7 +1686,6 @@ with timer("Full Pipeline Execution"):
         print("=" * 80)
 
         # Remove duplicates across splits by SAMPLE_ID (safety check)
-        # Filter out NaN values when checking for duplicates
         train_ids = set(train_data['SAMPLE_ID'].dropna().astype(str))
         if len(train_ids) == 0:
             print("WARNING: No valid SAMPLE_IDs in training data after NaN removal")
@@ -1849,7 +1828,6 @@ with timer("Full Pipeline Execution"):
                 'ValCount': val_counts.get(lbl, 0),
                 'TestCount': test_counts.get(lbl, 0)
             }
-            # SMOTE will be applied after scaling, so mark here for documentation
             if lbl in metastatic_labels_for_smote:
                 row_['SMOTE'] = True
                 row_['SMOTE_Generated'] = 'Applied after scaling'  # Will be updated after SMOTE
@@ -3132,11 +3110,7 @@ if 'fcols' not in locals() or fcols is None:
     else:
         raise ValueError("ERROR: feature_columns not defined. Cannot generate embeddings.")
 
-# ============================================================================
-# CRITICAL FIX: DO NOT filter training data based on test labels (data leakage)
-# Use ALL training labels. The model should learn to predict all labels seen in training.
-# At evaluation time, we'll handle labels that don't appear in test appropriately.
-# ============================================================================
+
 print("\n" + "=" * 80)
 print("GENERATING EMBEDDINGS FOR BASE CLASSIFIERS AND META-LEARNER")
 print("=" * 80)
@@ -3144,8 +3118,6 @@ print("CRITICAL: Using ALL training labels (not filtering based on test set)")
 print("          This prevents data leakage and ensures fair evaluation")
 print("=" * 80)
 
-# Use ALL data (no filtering based on test labels)
-# SNN/CAE were trained on ALL labels, so embeddings should use ALL labels too
 train_data_scaled_for_emb = train_data_scaled.copy()
 val_data_scaled_for_emb = val_data_scaled.copy()
 test_data_scaled_for_emb = test_data_scaled.copy()
@@ -3173,7 +3145,6 @@ print("=" * 80 + "\n")
 
 ###############################################################################
 # 3) NESTED SPLIT: Re-split train+val (80%) into 80-20 for base/meta training
-#    Keep original test set (20%) completely held out for final evaluation
 ###############################################################################
 print("\n" + "=" * 80)
 print("NESTED SPLIT FOR META-LEARNING")
@@ -3183,7 +3154,7 @@ print("Re-splitting Train+Val (80%) into: Base/Meta Train (80%) → Meta Val (20
 print("Final evaluation on original Test (20%)")
 print("=" * 80)
 
-# Combine train and val embeddings and labels for re-splitting
+
 combined_train_val = np.concatenate([combined_train, combined_val], axis=0)
 train_val_labels = np.concatenate([
     train_data_scaled_for_emb['LABEL'].values,
@@ -3194,11 +3165,7 @@ train_val_data = pd.concat([
     val_data_scaled_for_emb.reset_index(drop=True)
 ], ignore_index=True)
 
-# ============================================================================
-# CRITICAL FIX: Label encoder must be fitted on TRAINING data only (not test)
-# ============================================================================
 meta_label_encoder = LabelEncoder()
-# Fit on ALL labels that appear in training+validation (not test)
 train_val_labels_unique = np.unique(train_val_labels)
 meta_label_encoder.fit(train_val_labels_unique)
 met_class_labels = meta_label_encoder.classes_
@@ -3206,7 +3173,6 @@ met_class_labels = meta_label_encoder.classes_
 print(f"Base classifiers/Meta-learner will predict {len(met_class_labels)} labels (from training data)")
 print(f"  Training labels: {sorted(met_class_labels)[:5]}... (showing first 5 of {len(met_class_labels)})")
 
-# Check which labels appear in test
 test_labels_set = set(test_data_scaled_for_emb['LABEL'].unique())
 train_labels_set = set(train_val_labels_unique)
 labels_only_in_test = test_labels_set - train_labels_set
@@ -3222,7 +3188,6 @@ if len(labels_only_in_train) > 0:
     print(f"        Model will learn these labels but won't be evaluated on them")
 
 # Re-split train+val into 80-20 (stratified by label)
-# Safety check: Ensure we have data to split
 if len(combined_train_val) == 0:
     raise ValueError("ERROR: No data available for nested split! Combined train+val is empty.")
 if len(train_val_labels) == 0:
@@ -3230,7 +3195,6 @@ if len(train_val_labels) == 0:
 
 y_train_val_encoded = meta_label_encoder.transform(train_val_labels)
 
-# Check if stratification is possible (need at least 2 samples per class for stratify)
 unique_labels_in_split = np.unique(y_train_val_encoded)
 min_samples_per_class = min([np.sum(y_train_val_encoded == lbl) for lbl in unique_labels_in_split])
 if min_samples_per_class < 2:
@@ -3247,10 +3211,7 @@ combined_base_train, combined_meta_val, y_base_train, y_meta_val, train_val_base
     random_state=SEED,
     stratify=stratify_param
 )
-# train_test_split returns: (X_train, X_test, y_train, y_test, ...) for each array passed
-# So: combined_base_train, combined_meta_val, y_base_train, y_meta_val, train_val_base, train_val_meta
 
-# Safety check for empty data (after split)
 if len(combined_base_train) == 0:
     raise ValueError("ERROR: Base training set is empty after nested split!")
 if len(combined_meta_val) == 0:
@@ -3258,7 +3219,7 @@ if len(combined_meta_val) == 0:
 if len(combined_test) == 0:
     raise ValueError("ERROR: Test set is empty!")
 
-# Calculate percentages safely
+
 train_pct = (len(combined_base_train) / len(combined_train_val) * 100) if len(combined_train_val) > 0 else 0
 val_pct = (len(combined_meta_val) / len(combined_train_val) * 100) if len(combined_train_val) > 0 else 0
 
@@ -3291,7 +3252,6 @@ else:
     print("Training base classifiers on 80% of train+val data...")
     print("Performing GridSearchCV tuning (4 hyperparameters per classifier, 5-fold CV)...")
     with timer("Base Classifier Training & Tuning"):
-        # Safety check: Ensure we have data to train on
         if len(combined_base_train) == 0:
             raise ValueError("ERROR: Base training set is empty! Cannot train classifiers.")
         if len(y_base_train) == 0:
@@ -3304,15 +3264,15 @@ else:
     param_grids = {
         'LogisticRegression': {
             'C': [0.1, 1.0, 10.0],
-            'penalty': ['l1', 'l2'],  # saga solver works with both
-            'solver': ['saga'],  # saga supports both l1 and l2
+            'penalty': ['l1', 'l2'],  
+            'solver': ['saga'],  
             'max_iter': [500, 1000]
         },
         'KNN': {
             'n_neighbors': [3, 5, 7],
             'weights': ['uniform', 'distance'],
             'metric': ['euclidean', 'manhattan'],
-            'p': [1, 2]  # for minkowski metric
+            'p': [1, 2]  
         },
         'RandomForest': {
             'n_estimators': [50, 100],
@@ -3324,7 +3284,7 @@ else:
             'C': [0.1, 1.0, 10.0],
             'kernel': ['rbf', 'poly'],
             'gamma': ['scale', 'auto'],
-            'degree': [2, 3]  # for poly kernel
+            'degree': [2, 3] 
         },
         'XGBoost': {
             'n_estimators': [50, 100],
@@ -3449,12 +3409,10 @@ if tuning_results:
 
 ###############################################################################
 # 5) Build meta-features from base classifiers
-#    CRITICAL FIX: Use cross-validation for base_train to avoid data leakage
 #    - Meta-features for meta-learner training: CV-based from base_train (80%)
 #    - Meta-features for meta-learner validation: direct from meta_val (20% of train+val)
 #    - Meta-features for final evaluation: direct from test (20% held out)
 ###############################################################################
-# Safety check: Ensure classifiers are trained
 if not met_classifiers or len(met_classifiers) == 0:
     raise ValueError("ERROR: Base classifiers not trained! Cannot generate meta-features.")
 
@@ -3463,7 +3421,7 @@ print("GENERATING META-FEATURES")
 print("=" * 80)
 print("Using cross-validation for base_train to avoid data leakage...")
 
-# Use CV for base_train to avoid leakage (classifiers already saw this data during training)
+# Use CV for base_train to avoid leakage 
 meta_feats_base_train = get_meta_features_cv(
     met_classifiers, combined_base_train, y_base_train, cv_folds=5, random_state=SEED
 )
@@ -3477,7 +3435,6 @@ print(f"  Meta val meta-features: {meta_feats_meta_val.shape}")
 print(f"  Test meta-features: {meta_feats_test.shape}")
 print("=" * 80 + "\n")
 
-# Safety check: Ensure meta-features have correct shape
 if meta_feats_base_train.shape[0] != len(combined_base_train):
     raise ValueError(
         f"ERROR: Meta-features shape mismatch. Expected {len(combined_base_train)} samples, got {meta_feats_base_train.shape[0]}")
@@ -3488,7 +3445,6 @@ if meta_feats_test.shape[0] != len(combined_test):
     raise ValueError(
         f"ERROR: Meta-features shape mismatch. Expected {len(combined_test)} samples, got {meta_feats_test.shape[0]}")
 
-# Encode test labels - handle unseen labels gracefully
 test_labels_raw = test_data_scaled_for_emb['LABEL'].values
 y_met_test = []
 for lbl in test_labels_raw:
@@ -3501,12 +3457,10 @@ for lbl in test_labels_raw:
         y_met_test.append(0)  # Assign to first class as fallback
 y_met_test = np.array(y_met_test)
 
-# Safety check: Ensure labels match
 if len(y_met_test) != len(test_data_scaled_for_emb):
     raise ValueError(
         f"ERROR: Label encoding mismatch. Expected {len(test_data_scaled_for_emb)} labels, got {len(y_met_test)}")
 
-# restricted combos
 restricted_archs = [
     (128, 128, 128, 0.3, 1e-4, 'adam', 64, 20),
     (256, 64, 256, 0.3, 1e-5, 'adam', 32, 20),
@@ -3517,6 +3471,7 @@ restricted_archs = [
     (256, 256, 128, 0.3, 1e-4, 'adam', 32, 20),
     (256, 128, 128, 0.3, 1e-5, 'adam', 64, 20)
 ]
+
 # Add validation metrics to results columns
 results_cols = ['Iteration', 'h1', 'h2', 'h3', 'dropout_rate', 'l2_reg', 'optimizer',
                 'batch_size', 'epochs',
@@ -3540,10 +3495,10 @@ def get_class_accuracies(y_true, y_pred, classes):
 
 ###############################################################################
 # 6) Train multiple meta-learner architectures on 'meta_feats_base_train'
-#    Validate on 'meta_feats_meta_val', evaluate on 'meta_feats_test'
+#    Validate on 'meta_feats_meta_val'
 ###############################################################################
 print("Evaluating restricted meta-learner architectures...")
-print("Training on 80% of train+val, validating on 20% of train+val, evaluating on held-out test")
+print("Training on 80% of train+val, validating on 20% of train+val")
 with timer("Meta-learner Architecture Selection"):
     # Safety check: Ensure meta-features are valid
     if meta_feats_base_train.shape[1] == 0:
@@ -3639,7 +3594,6 @@ for c_name, clf in met_classifiers.items():
 
 ###############################################################################
 # 6b) Evaluate BEST META-LEARNER on held-out test set
-# CRITICAL FIX: Select best model based on VALIDATION accuracy, not test
 ###############################################################################
 results_df_sorted = results_df.sort_values(by='Val_Accuracy', ascending=False)  # Use Val_Accuracy for selection
 best_model_row = results_df_sorted.iloc[0]
@@ -3674,7 +3628,7 @@ print(f"  Meta-learner (selected by Val Acc={best_model_row['Val_Accuracy']:.4f}
 print("=" * 80 + "\n")
 
 ###############################################################################
-# 6c) Create bar plot: Classifier Accuracy on Test Split (EXACTLY like image)
+# 6c) Create bar plot: Classifier Accuracy on Test Split
 ###############################################################################
 print("Creating classifier accuracy comparison plot...")
 classifier_names = ['LogisticRegression', 'KNN', 'RandomForest', 'SVM', 'XGBoost', 'Meta']
@@ -3885,13 +3839,9 @@ for idx, (model_idx, row) in enumerate(best_two_models.iterrows()):
         no_numbers=True
     )
 # --- New snippet: Confusion Matrices for Non-Metastatic Tissues (Counts) ---
-import os
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.metrics import confusion_matrix
 
-# Get all non-met labels (you may sort them alphabetically)
+# Get all non-met labels 
 non_met_classes = sorted(list(set(y_true_labels_tg_str)))
 
 # Compute the full confusion matrix (absolute counts) for non-met tissues
@@ -3946,8 +3896,7 @@ for start in range(0, num_labels, block_size):
 # -------------- Plot 2D & 3D Dim Reductions --------------
 print("Plotting dimensionality reductions for test data vs. entire reference set...")
 
-# We'll pick test_data for: metastatic only
-# Use test_data_scaled_for_emb (all labels, not filtered)
+
 met_only = test_data_scaled_for_emb[test_data_scaled_for_emb['SOURCE'] == 'METASTATIC']
 tcga_gtex = test_data_scaled[test_data_scaled['SOURCE'].isin(['TCGA', 'GTEX'])]
 
@@ -3966,9 +3915,6 @@ tgc_labels = tcga_gtex['LABEL'].values
 unique_tgc_labels = np.unique(tgc_labels)
 
 
-#############################
-# Modified 2D Dimension Reduction Plot Function
-#############################
 def plot_dim_reductions_2d(X_pre, X_post, labels, set_name, output_dir, unique_labels, hide_legend=False):
     """
     Creates a 2D dimension reduction figure using t-SNE, PCA, and UMAP.
@@ -4042,9 +3988,6 @@ def plot_dim_reductions_2d(X_pre, X_post, labels, set_name, output_dir, unique_l
     plt.close()
 
 
-#############################
-# Modified 3D Dimension Reduction Plot Function
-#############################
 def plot_dim_reductions_3d(X_pre, X_post, labels, set_name, output_dir, unique_labels, hide_legend=False):
     """
     Create 3D dimensionality reduction visualization comparing pre- and post-embedding data.
@@ -4165,10 +4108,6 @@ plot_dim_reductions_3d(X_tgc_pre, X_tgc_post, tgc_labels,
 ###############################################################################
 from mpl_toolkits.mplot3d import Axes3D  # Needed for 3D projection
 from sklearn.metrics import silhouette_samples  # (Not used anymore for display)
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-
 
 def _scatter_3d_with_clusters(ax, coords, labels, unique_labels, title=""):
     """
@@ -4398,7 +4337,7 @@ print("Finished generating 3D PCA & 3D tSNE plots (non-met vs met, pre vs post).
 
 
 ###############################################################################
-# NEW: Plot ALL Samples (including metastatic tissue) using PCA (2D and 3D) – Only Distortion
+# Plot ALL Samples (including metastatic tissue) using PCA (2D and 3D) – Only Distortion
 ###############################################################################
 def plot_all_samples_pca(test_df,
                          feature_cols,
@@ -4507,7 +4446,7 @@ def plot_all_samples_pca(test_df,
 
 
 ###############################################################################
-# NEW: Plot ALL Samples (including metastatic tissue) using PCA (2D and 3D) – Distortion & Silhouette
+# Plot ALL Samples (including metastatic tissue) using PCA (2D and 3D) – Distortion & Silhouette
 ###############################################################################
 def plot_all_samples_pca_with_sil(test_df, feature_cols, snn_net, cae_enc, output_path):
     """
@@ -4641,8 +4580,7 @@ plot_all_samples_pca_with_sil(test_data_scaled, fcols, snn_base_network, cae_enc
 print("Finished generating ALL samples PCA plot (2D and 3D, with distortion and silhouette).")
 
 ###############################################################################
-# Another Stage: Compare SNN-only vs CAE-only vs Combined Meta-Learners
-# with a bar plot from 0.75 to 1, legend outside on the right,
+# Compare SNN-only vs CAE-only vs Combined Meta-Learners
 # Blue=Accuracy, Red=F1
 ###############################################################################
 print("\n--- Comparing SNN, CAE, and Combined embeddings via meta-learner ---")
@@ -4757,8 +4695,7 @@ print("Done comparing single-embedding vs combined embeddings.\n")
 
 ###############################################################################
 # Centroids-Only 4-Axis Plots (Non-Met PRE/POST, Met PRE/POST) for PCA or tSNE,
-# in 2D or 3D. No on-graph label annotation; median distortion goes into legend.
-# The legend is fully below the figure in multiple columns to avoid overlap.
+# in 2D or 3D. 
 ###############################################################################
 
 import numpy as np
