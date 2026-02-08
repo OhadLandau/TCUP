@@ -1,0 +1,32 @@
+{
+  "LogisticRegression": {
+    "C": 10.0,
+    "penalty": "l2",
+    "solver": "saga",
+    "max_iter": 500
+  },
+  "KNN": {
+    "n_neighbors": 3,
+    "weights": "distance",
+    "metric": "manhattan",
+    "p": 1
+  },
+  "RandomForest": {
+    "n_estimators": 100,
+    "max_depth": null,
+    "min_samples_split": 2,
+    "min_samples_leaf": 1
+  },
+  "SVM": {
+    "C": 10.0,
+    "kernel": "poly",
+    "gamma": "scale",
+    "degree": 3
+  },
+  "XGBoost": {
+    "n_estimators": 100,
+    "max_depth": 5,
+    "learning_rate": 0.1,
+    "subsample": 1.0
+  }
+}
