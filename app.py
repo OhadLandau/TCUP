@@ -43,7 +43,7 @@ def _load_models():
 
     snn_full = tf.keras.models.load_model(ROOT / "snn_model.h5", compile=False, custom_objects=custom)
     cae_enc  = tf.keras.models.load_model(ROOT / "cae_encoder.h5", compile=False, custom_objects=custom)
-    meta_net = tf.keras.models.load_model(ROOT / "best_meta_learner_2.h5", compile=False, custom_objects=custom)
+    meta_net = tf.keras.models.load_model(ROOT / "best_meta_learner_3.h5", compile=False, custom_objects=custom)
     return snn_full.layers[2], cae_enc, meta_net
 
 # ───────────────────────── helpers ───────────────────────────────
@@ -287,5 +287,6 @@ def go_back(_): return {"display": "block"}, {"display": "none"}
 if __name__ == "__main__":
     os.environ.setdefault("WEB_CONCURRENCY", "1")   # single worker
     app.run_server(debug=True)
+
 
 

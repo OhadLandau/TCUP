@@ -36,7 +36,6 @@ from imblearn.over_sampling import SMOTE
 from sklearn.linear_model import Lasso
 from sklearn.feature_selection import SelectFromModel
 
-
 warnings.filterwarnings('ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 logging.getLogger('tensorflow').setLevel(logging.ERROR)
@@ -1235,6 +1234,7 @@ with timer("Full Pipeline Execution"):
         test_data = pre_data['test_data']
         label_encoder = pre_data['label_encoder']
 
+
         def get_source_from_label(x):
             if x.endswith('_METASTATIC'):
                 return 'METASTATIC'
@@ -1517,71 +1517,55 @@ with timer("Full Pipeline Execution"):
         gtex_data_full = gtex_data_filtered
         metastatic_data = metastatic_data_filtered
 
-        from sklearn.impute import KNNImputer
-
-        imputer = KNNImputer(n_neighbors=5)
-
         # ============================================================================
-        # STEP 3: Impute missing values
+        # STEP 3: Prepare data (NO imputation yet - will be done after splits)
         # ============================================================================
-        print("STEP 3: Imputing missing values (KNN imputation on common genes only)...")
-        with timer("STEP 3: KNN Imputation"):
-            # -------------------
-            # 1) Impute TCGA (patient)
-            # -------------------
-            patient_expr = patient_data[common_genes]
-            patient_expr_imputed = imputer.fit_transform(patient_expr)
-            common_genes_ordered = list(patient_expr.columns)
-        patient_expr_imputed = pd.DataFrame(patient_expr_imputed, columns=common_genes_ordered,
-                                            index=patient_expr.index)
-        print(f"  TCGA imputation complete: {len(patient_expr_imputed)} samples × {len(common_genes_ordered)} genes")
+        print("STEP 3: Preparing data for splitting (imputation will be done after splits to avoid leakage)...")
 
-        # -------------------
-        # 2) Impute GTEX
-        # -------------------
-        gtex_expr = gtex_data_full.loc[:, common_genes_ordered]
-        gtex_expr_imputed = imputer.transform(gtex_expr)
-        gtex_expr_imputed = pd.DataFrame(gtex_expr_imputed, columns=common_genes_ordered, index=gtex_data_full.index)
-        print(f"  GTEx imputation complete: {len(gtex_expr_imputed)} samples × {len(common_genes_ordered)} genes")
+        # Extract gene expression data and metadata
+        common_genes_ordered = list(common_genes)
 
-        # -------------------
-        # 3) Impute Metastatic
-        # -------------------
-        metastatic_expr = metastatic_data.loc[:, common_genes_ordered]
-        metastatic_expr_imputed = imputer.transform(metastatic_expr)
-        metastatic_expr_imputed = pd.DataFrame(metastatic_expr_imputed, columns=common_genes_ordered,
-                                               index=metastatic_expr.index)
-        print(
-            f"  Metastatic imputation complete: {len(metastatic_expr_imputed)} samples × {len(common_genes_ordered)} genes")
-
-        print("Imputation complete for all datasets.\n")
+        # Select only common genes from each dataset
+        patient_expr = patient_data[common_genes_ordered].copy()
+        gtex_expr = gtex_data_full[common_genes_ordered].copy()
+        metastatic_expr = metastatic_data[common_genes_ordered].copy()
 
         # Assign SOURCE, LABEL, and TISSUE columns
         patient_labels = patient_data['CANCER TYPE'].reset_index(drop=True)
         gtex_labels = gtex_data_full['LABEL'].reset_index(drop=True)  # Already in format TissueName_GTEx
         metastatic_labels = metastatic_data['CANCERTYPE'].reset_index(drop=True)
 
-        patient_expr_imputed.index = patient_labels.index
-        gtex_expr_imputed.index = gtex_labels.index
-        metastatic_expr_imputed.index = metastatic_labels.index
+        patient_expr.index = patient_labels.index
+        gtex_expr.index = gtex_labels.index
+        metastatic_expr.index = metastatic_labels.index
 
-        patient_expr_imputed['SOURCE'] = 'TCGA'
-        gtex_expr_imputed['SOURCE'] = 'GTEX'
-        metastatic_expr_imputed['SOURCE'] = 'METASTATIC'
+        patient_expr['SOURCE'] = 'TCGA'
+        gtex_expr['SOURCE'] = 'GTEX'
+        metastatic_expr['SOURCE'] = 'METASTATIC'
 
-        patient_expr_imputed['LABEL'] = patient_labels.values + '_TCGA'
-        gtex_expr_imputed['LABEL'] = gtex_labels.values  # Already formatted as TissueName_GTEx
-        metastatic_expr_imputed['LABEL'] = metastatic_labels.values + '_METASTATIC'
-        metastatic_expr_imputed['TISSUE'] = metastatic_labels.values
+        patient_expr['LABEL'] = patient_labels.values + '_TCGA'
+        gtex_expr['LABEL'] = gtex_labels.values  # Already formatted as TissueName_GTEx
+        metastatic_expr['LABEL'] = metastatic_labels.values + '_METASTATIC'
+        metastatic_expr['TISSUE'] = metastatic_labels.values
 
         if 'SAMPLEID' in patient_data.columns:
-            patient_expr_imputed['SAMPLE_ID'] = patient_data['SAMPLEID'].reset_index(drop=True).values
+            patient_expr['SAMPLE_ID'] = patient_data['SAMPLEID'].reset_index(drop=True).values
 
         if 'PATIENT_ID' in patient_data.columns:
-            patient_expr_imputed['PATIENT_ID'] = patient_data['PATIENT_ID'].reset_index(drop=True).values
+            patient_expr['PATIENT_ID'] = patient_data['PATIENT_ID'].reset_index(drop=True).values
 
-        gtex_expr_imputed['SAMPLE_ID'] = gtex_data_full['SAMPLE_ID'].values
-        gtex_expr_imputed['DONOR_ID'] = gtex_data_full['DONOR_ID'].values
+        gtex_expr['SAMPLE_ID'] = gtex_data_full['SAMPLE_ID'].values
+        gtex_expr['DONOR_ID'] = gtex_data_full['DONOR_ID'].values
+
+        # Rename for consistency with downstream code (these will be imputed later)
+        patient_expr_imputed = patient_expr
+        gtex_expr_imputed = gtex_expr
+        metastatic_expr_imputed = metastatic_expr
+
+        print(f"  TCGA data prepared: {len(patient_expr_imputed)} samples × {len(common_genes_ordered)} genes")
+        print(f"  GTEx data prepared: {len(gtex_expr_imputed)} samples × {len(common_genes_ordered)} genes")
+        print(f"  Metastatic data prepared: {len(metastatic_expr_imputed)} samples × {len(common_genes_ordered)} genes")
+        print("Data preparation complete (imputation deferred until after splits).\n")
 
         # -------------------
         # 4) Apply "≥30" filter only to TCGA+GTEX (temporarily merge to find common labels)
@@ -1640,7 +1624,6 @@ with timer("Full Pipeline Execution"):
         ], ignore_index=True)
 
         metastatic_expr_imputed = metastatic_expr_imputed.drop(test_samples.index)
-
 
         if len(metastatic_expr_imputed) > 0:
             train_meta, val_meta = train_test_split(
@@ -1714,6 +1697,66 @@ with timer("Full Pipeline Execution"):
         test_data = pd.concat([gtex_test, patient_test, test_samples], ignore_index=True)
 
         print(f"Final merged splits: Train={len(train_data):,}, Val={len(val_data):,}, Test={len(test_data):,}")
+
+        # ============================================================================
+        # STEP 3B: KNN Imputation after splits
+        # ============================================================================
+        print("\n" + "=" * 80)
+        print("STEP 3B: Performing KNN imputation within each split (no leakage)")
+        print("=" * 80)
+
+        from sklearn.impute import KNNImputer
+
+        imputer = KNNImputer(n_neighbors=5)
+
+        known_metadata_cols = ['SOURCE', 'LABEL', 'TISSUE', 'SAMPLE_ID', 'PATIENT_ID', 'DONOR_ID', 'LABEL_NUMERIC']
+        metadata_cols = [col for col in known_metadata_cols if col in train_data.columns]
+        gene_cols = [col for col in train_data.columns if col not in known_metadata_cols]
+
+        print(f"  Gene columns: {len(gene_cols)}")
+        print(f"  Metadata columns: {metadata_cols}")
+
+        # Extract gene expression and metadata for each split
+        train_genes = train_data[gene_cols].copy()
+        train_meta = train_data[metadata_cols].copy()
+
+        val_genes = val_data[gene_cols].copy()
+        val_meta = val_data[metadata_cols].copy()
+
+        test_genes = test_data[gene_cols].copy()
+        test_meta = test_data[metadata_cols].copy()
+
+        # Fit imputer on train data only
+        print("  Fitting KNN imputer on training data...")
+        train_genes_imputed = imputer.fit_transform(train_genes)
+        train_genes_imputed = pd.DataFrame(train_genes_imputed, columns=gene_cols, index=train_genes.index)
+        print(f"  ✓ Training data imputed: {len(train_genes_imputed)} samples")
+
+        # Transform VAL and TEST using the fitted imputer
+        print("  Transforming validation data...")
+        val_genes_imputed = imputer.transform(val_genes)
+        val_genes_imputed = pd.DataFrame(val_genes_imputed, columns=gene_cols, index=val_genes.index)
+        print(f"  ✓ Validation data imputed: {len(val_genes_imputed)} samples")
+
+        print("  Transforming test data...")
+        test_genes_imputed = imputer.transform(test_genes)
+        test_genes_imputed = pd.DataFrame(test_genes_imputed, columns=gene_cols, index=test_genes.index)
+        print(f"  ✓ Test data imputed: {len(test_genes_imputed)} samples")
+
+        # Recombine imputed genes with metadata
+        train_data = pd.concat([train_genes_imputed, train_meta], axis=1)
+        val_data = pd.concat([val_genes_imputed, val_meta], axis=1)
+        test_data = pd.concat([test_genes_imputed, test_meta], axis=1)
+
+        # Verify data integrity after imputation
+        print(f"\n  Post-imputation verification:")
+        print(f"    Train shape: {train_data.shape}, Val shape: {val_data.shape}, Test shape: {test_data.shape}")
+        print(f"    Train columns: {len(train_data.columns)} ({len(gene_cols)} genes + {len(metadata_cols)} metadata)")
+        print(f"    Missing values - Train: {train_data[gene_cols].isna().sum().sum()}, "
+              f"Val: {val_data[gene_cols].isna().sum().sum()}, Test: {test_data[gene_cols].isna().sum().sum()}")
+
+        print("✓ KNN imputation complete for all splits (no data leakage)")
+        print("=" * 80 + "\n")
 
         # Ensure unique SAMPLE_ID AFTER merging (like original code)
         if 'SAMPLE_ID' not in train_data.columns or train_data['SAMPLE_ID'].isna().any():
@@ -2630,7 +2673,7 @@ else:
 # ============================================================================
 # SEED LOOPING: Train models with different seeds
 # ============================================================================
-SEED_LIST = [42, 18, 309, 1992, 451]  #Multiple seeds, randomly selected.
+SEED_LIST = [42, 18, 309, 1992, 451]  # Multiple seeds, randomly selected.
 
 print("\n" + "=" * 80)
 print(f"STARTING SEED LOOP: Will train models with {len(SEED_LIST)} different seeds")
@@ -3807,7 +3850,6 @@ for seed_idx, current_seed in enumerate(SEED_LIST, 1):
     # Rotate x-axis labels (diagonal)
     plt.xticks(rotation=45, ha='right')
 
-
     plt.tight_layout()
     plot_path = os.path.join(evaluation_dir, 'classifier_accuracy_test_split.png')
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
@@ -4231,11 +4273,10 @@ for seed_idx, current_seed in enumerate(SEED_LIST, 1):
                            "TCGA_GTEX", evaluation_dir, unique_tgc_labels,
                            hide_legend=True)
 
+
     ###############################################################################
     # 3D PCA & 3D tSNE 4-Axis Plots (Non-Met vs. Met, Pre vs. Post), with Cluster Centroids
     ###############################################################################
-
-
 
     def _scatter_3d_with_clusters(ax, coords, labels, unique_labels, title=""):
         """
@@ -4474,7 +4515,7 @@ for seed_idx, current_seed in enumerate(SEED_LIST, 1):
         • colour = LABEL   • median distortion printed on each panel
         • big legend under the figure (font tracks rcParams)
         """
-
+        import matplotlib as mpl
         # ---------- embeddings ----------
         X_all_pre = test_df[feature_cols].values
         X_all_post = np.concatenate(
@@ -4786,12 +4827,11 @@ for seed_idx, current_seed in enumerate(SEED_LIST, 1):
     print(f"Bar plot saved => {out_barplot}")
     print("Done comparing single-embedding vs combined embeddings.\n")
 
+
     ###############################################################################
     # Centroids-Only 4-Axis Plots (Non-Met PRE/POST, Met PRE/POST) for PCA or tSNE,
     # in 2D or 3D.
     ###############################################################################
-
-
 
     def _transform_dimred(X, method='pca', is_3d=False, random_state=42):
         """
