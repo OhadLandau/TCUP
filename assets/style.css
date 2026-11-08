@@ -165,6 +165,11 @@ button { font: inherit; }
 .perf-bar span { display: block; height: 100%; border-radius: 3px; }
 .about-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 20px; color: var(--ink-2); }
 .about-grid p { margin: 0; }
+.cite-card { margin-top: 28px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 24px; color: var(--ink-2); max-width: 860px; }
+.cite-card h3 { margin: 0 0 10px; font-size: 16px; color: var(--ink); }
+.cite-card p { margin: 0 0 10px; }
+.cite-card p:last-child { margin-bottom: 0; }
+.cite-card blockquote { margin: 0 0 10px; padding: 10px 14px; background: var(--surface-2); border-left: 3px solid var(--navy-2); border-radius: var(--radius-sm); font-size: 14px; color: var(--ink); overflow-wrap: anywhere; }
 .ruo-note { background: #fff8e6; border: 1px solid #f3dc9c; border-radius: var(--radius); padding: 16px; color: var(--warn-ink); }
 
 /* ---------- workspace ---------- */
