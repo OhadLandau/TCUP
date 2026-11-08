@@ -1,18 +1,10 @@
-# ───── core Dash stack ───────────────────────────────
-dash==2.15.0
-dash-bootstrap-components==1.6.0
-plotly==5.19.0
-
 # ───── data / ML runtime ─────────────────────────────
-pandas==2.2.2
-numpy==1.26.4               # upper bound <2.0, compatible with sklearn-1.2
-scikit-learn==1.2.2         # matches the version that wrote your pickles
-joblib==1.4.0               # same as in your local env
-xgboost==2.0.3
-
-# TensorFlow 2.15 wheels exist for Python 3.11; loads models saved under TF 2.10
-tensorflow==2.15.0
-keras==2.15.0               # explicit pin, though bundled with TF
+numpy==1.23.5
+pandas==1.5.3
+scipy==1.10.1
+scikit-learn==1.2.2         # matches the version that wrote the pickles
+joblib==1.6.0
+xgboost==1.7.6              # matches the version that trained the XGBoost base classifier
 
 # ───── production server ────────────────────────────
 gunicorn==21.2.0

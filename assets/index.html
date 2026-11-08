@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TCUP · Tissue of Origin</title>
+<meta name="description" content="TCUP predicts the tissue of origin of a tumor or metastasis from a bulk RNA-seq expression profile.">
+<link rel="icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=10">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="#" data-nav="home" aria-label="TCUP home">
+    <img src="logo.png" alt="" class="brand-logo">
+    <span class="brand-name">TCUP</span>
+    <span class="brand-tag">Tissue of origin</span>
+  </a>
+  <nav class="topnav" aria-label="Main">
+    <a href="#analyze" data-nav="home">Analyze</a>
+    <a href="#how">How it works</a>
+    <a href="#performance">Performance</a>
+    <a href="#about">About</a>
+  </nav>
+  <span class="ruo" title="Research use only. Not for diagnostic use.">Research use only</span>
+</header>
+
+<main>
+  <!-- ======================= Landing ======================= -->
+  <section id="landing" class="view is-active" aria-labelledby="hero-title">
+    <div class="hero" id="analyze">
+      <div class="hero-copy">
+        <p class="eyebrow">Transcriptomic classifier · 45 tissue classes</p>
+        <h1 id="hero-title">Find where a tumor came from, from one RNA-seq profile.</h1>
+        <p class="lede">TCUP compares a bulk RNA-seq expression profile with healthy tissue, primary tumors and metastases, and returns the most likely tissue of origin with the genes the model relies on.</p>
+        <div class="stat-row" id="hero-stats" aria-live="polite">
+          <div class="stat"><span class="stat-num" data-stat="classes">45</span><span class="stat-label">tissue classes</span></div>
+          <div class="stat"><span class="stat-num" data-stat="genes">1,576</span><span class="stat-label">genes in the model</span></div>
+          <div class="stat"><span class="stat-num" data-stat="acc">98.4%</span><span class="stat-label">held-out test accuracy</span></div>
+          <div class="stat"><span class="stat-num" data-stat="met">77.5%</span><span class="stat-label">on metastases</span></div>
+        </div>
+      </div>
+
+      <div class="upload-card" id="upload-card">
+        <h2 class="card-title">Analyze samples</h2>
+        <label class="dropzone" id="dropzone" tabindex="0">
+          <input type="file" id="file-input" accept=".csv,.tsv,.txt" hidden>
+          <svg class="dz-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 31V11m0 0-8 8m8-8 8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 29v6a4 4 0 0 0 4 4h20a4 4 0 0 0 4-4v-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+          <span class="dz-main">Drop an expression file here</span>
+          <span class="dz-sub">or <u>browse</u> · CSV or TSV, one or many samples</span>
+        </label>
+
+        <fieldset class="segmented" id="sample-type">
+          <legend>Fill missing genes from</legend>
+          <label><input type="radio" name="stype" value="cancer" checked><span>Tumor or metastasis</span></label>
+          <label><input type="radio" name="stype" value="healthy"><span>Normal tissue</span></label>
+        </fieldset>
+
+        <div class="upload-actions">
+          <button class="btn btn-primary" id="try-example" type="button">Try 9 example samples</button>
+          <a class="btn btn-ghost" href="/api/example" download>Download example file</a>
+        </div>
+        <p class="upload-msg" id="upload-msg" role="status"></p>
+
+        <details class="format">
+          <summary>File format</summary>
+          <ul>
+            <li><b>Units:</b> TPM. Values are log2(TPM + 1) transformed by TCUP, so don't upload log values.</li>
+            <li><b>Layout:</b> samples as rows and gene symbols as columns, or the other way round. TCUP detects which.</li>
+            <li><b>Genes:</b> HGNC symbols. Genes the model uses but your file lacks are filled with the training median.</li>
+            <li><b>Size:</b> up to 500 samples and 200 MB per file.</li>
+          </ul>
+        </details>
+      </div>
+    </div>
+
+    <section class="band" id="how" aria-labelledby="how-title">
+      <h2 id="how-title" class="section-title">How it works</h2>
+      <ol class="steps">
+        <li><span class="step-n">1</span><h3>Normalize</h3><p>Expression is mapped to the 1,576 model genes and transformed to log2(TPM + 1), then standardized with the training scaler.</p></li>
+        <li><span class="step-n">2</span><h3>Embed</h3><p>A Siamese network and a contrastive autoencoder place the sample in two learned spaces that separate tissues and disease states.</p></li>
+        <li><span class="step-n">3</span><h3>Ensemble</h3><p>Five classifiers read the embeddings, and a meta-learner combines them into one probability per tissue class.</p></li>
+        <li><span class="step-n">4</span><h3>Explain</h3><p>For the predicted class, the 20 genes whose ablation most reduced accuracy are shown against reference expression.</p></li>
+      </ol>
+    </section>
+
+    <section class="band band-alt" id="performance" aria-labelledby="perf-title">
+      <h2 id="perf-title" class="section-title">Held-out test performance</h2>
+      <p class="section-sub" id="perf-sub">Deployed model on samples never used for training or model selection.</p>
+      <div class="perf-grid" id="perf-grid"></div>
+    </section>
+
+    <section class="band" id="about" aria-labelledby="about-title">
+      <h2 id="about-title" class="section-title">About TCUP</h2>
+      <div class="about-grid">
+        <p>TCUP was trained on about 21,000 profiles: GTEx healthy tissue, TCGA primary tumors and BCGSC metastases. Metastases in this data have a known primary and were biopsied away from it, so they serve as CUP-like cases. They are not confirmed cancers of unknown primary. TCUP reports 45 classes: 26 normal tissues, 15 primary tumors and 4 metastatic types. Four more metastatic types (HNSC, SKCM, STAD, UCEC) had too few samples to test, so they were used in training but are never reported.</p>
+        <p>Gene rankings come from Monte Carlo ablation on the held-out test set. A gene is marked significant when its accuracy drop stands out from all other genes after Benjamini-Hochberg correction. Rankings describe this model and test set, and need validation in independent cohorts.</p>
+        <p class="ruo-note"><b>Research use only.</b> TCUP is not a diagnostic device and must not guide patient care.</p>
+      </div>
+    </section>
+  </section>
+
+  <!-- ======================= Workspace ======================= -->
+  <section id="workspace" class="view" aria-label="Analysis workspace">
+    <aside class="sidebar" aria-label="Samples">
+      <div class="side-head">
+        <div>
+          <h2 class="side-title">Samples <span id="sample-count" class="count">0</span></h2>
+          <p class="side-progress" id="side-progress"></p>
+        </div>
+        <button class="icon-btn" id="add-file" type="button" title="Add another file" aria-label="Add another file">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="progress" aria-hidden="true"><span id="progress-bar"></span></div>
+      <input class="side-search" id="side-search" type="search" placeholder="Filter samples" aria-label="Filter samples">
+      <ul class="sample-list" id="sample-list" role="listbox" aria-label="Samples"></ul>
+      <div class="side-foot">
+        <button class="btn btn-ghost btn-sm" id="export-csv" type="button" disabled>Export CSV</button>
+        <button class="btn btn-link btn-sm" id="new-analysis" type="button">New analysis</button>
+      </div>
+    </aside>
+
+    <div class="detail" id="detail" aria-live="polite"></div>
+  </section>
+</main>
+
+<div class="drop-overlay" id="drop-overlay" aria-hidden="true"><div>Drop to add samples</div></div>
+<div class="tooltip" id="tooltip" role="tooltip"></div>
+
+<footer class="footer">
+  <span>TCUP · v2 model with a training-only LASSO gene list</span>
+  <span>Research use only · not for diagnostic use</span>
+</footer>
+
+<script src="script.js?v=10"></script>
+</body>
+</html>
